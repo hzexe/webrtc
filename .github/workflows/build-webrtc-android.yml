@@ -57,7 +57,7 @@ jobs:
           
       - name: 同步 WebRTC 源码
         run: |
-          echo "开始同步 WebRTC 源码 (分支: $WEBRTC_BRANCH)..."
+          echo "开始同步 WebRTC 源码 (分支: ${{ env.WEBRTC_BRANCH }})..."
           mkdir -p ${{ env.WEBRTC_SRC_DIR }}
           cd ${{ env.WEBRTC_SRC_DIR }}
           
@@ -67,7 +67,7 @@ jobs:
           # 切换到指定分支
           cd src
           git fetch origin
-          git checkout -b $WEBRTC_BRANCH origin/$WEBRTC_BRANCH || git checkout $WEBRTC_BRANCH
+          git checkout -b ${{ env.WEBRTC_BRANCH }} origin/${{ env.WEBRTC_BRANCH }} || git checkout ${{ env.WEBRTC_BRANCH }}
           
           # 运行 hooks
           gclient sync
@@ -283,8 +283,8 @@ jobs:
             
             ## 编译信息
             - WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
-            - 编译时间: ${{ github.event.head_commit.timestamp }}
             - Commit: ${{ github.sha }}
+            - GitHub Actions Run: ${{ github.run_number }}
             
             ## 包含功能
             - 回声消除 (AEC)
