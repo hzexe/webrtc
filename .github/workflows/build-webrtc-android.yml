@@ -1,0 +1,289 @@
+name: Build WebRTC for Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      webrtc_branch:
+        description: 'WebRTC 分支 (例如: m120, m121)'
+        required: false
+        default: 'm120'
+        type: string
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  DEPOT_TOOLS_VERSION: 'main'
+  WEBRTC_BRANCH: ${{ github.event.inputs.webrtc_branch || 'm120' }}
+
+jobs:
+  build-webrtc:
+    name: Build WebRTC Android
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置环境变量
+        run: |
+          echo "WEBRTC_BRANCH=${{ env.WEBRTC_BRANCH }}" >> $GITHUB_ENV
+          echo "WEBRTC_SRC_DIR=${{ github.workspace }}/src" >> $GITHUB_ENV
+          echo "OUTPUT_DIR=${{ github.workspace }}/output" >> $GITHUB_ENV
+          
+      - name: 安装依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            curl \
+            unzip \
+            python3 \
+            python3-pip \
+            build-essential \
+            openjdk-11-jdk
+          
+      - name: 安装 depot_tools
+        run: |
+          cd $HOME
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          echo "$HOME/depot_tools" >> $GITHUB_PATH
+          
+      - name: 配置 Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+      - name: 同步 WebRTC 源码
+        run: |
+          echo "开始同步 WebRTC 源码 (分支: $WEBRTC_BRANCH)..."
+          mkdir -p ${{ env.WEBRTC_SRC_DIR }}
+          cd ${{ env.WEBRTC_SRC_DIR }}
+          
+          # 初始化 depot_tools
+          fetch --nohooks webrtc_android
+          
+          # 切换到指定分支
+          cd src
+          git fetch origin
+          git checkout -b $WEBRTC_BRANCH origin/$WEBRTC_BRANCH || git checkout $WEBRTC_BRANCH
+          
+          # 运行 hooks
+          gclient sync
+          
+      - name: 编译 arm64-v8a 架构
+        run: |
+          echo "开始编译 arm64-v8a 架构..."
+          cd ${{ env.WEBRTC_SRC_DIR }}/src
+          
+          # 生成构建配置
+          # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
+          # 仅排除测试和示例代码，保留所有核心功能
+          gn gen out/android_arm64 --args='
+target_os = "android"
+target_cpu = "arm64"
+is_debug = false
+is_component_build = false
+rtc_include_tests = false
+rtc_build_examples = false
+rtc_enable_protobuf = true
+use_custom_libcxx = true
+treat_warnings_as_errors = false
+rtc_enable_android_opensl = true
+rtc_enable_android_aaudio = true
+rtc_use_android_media_codec = true
+rtc_enable_libaom = true
+rtc_enable_libvpx = true
+rtc_enable_h264 = true
+rtc_enable_vp8 = true
+rtc_enable_vp9 = true
+rtc_enable_av1 = true
+rtc_enable_bwe_test_logging = false
+rtc_enable_event_tracing = false
+'
+          
+          # 编译
+          ninja -C out/android_arm64 libwebrtc
+          
+      - name: 编译 x86_64 架构
+        run: |
+          echo "开始编译 x86_64 架构..."
+          cd ${{ env.WEBRTC_SRC_DIR }}/src
+          
+          # 生成构建配置
+          # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
+          # 仅排除测试和示例代码，保留所有核心功能
+          gn gen out/android_x64 --args='
+target_os = "android"
+target_cpu = "x64"
+is_debug = false
+is_component_build = false
+rtc_include_tests = false
+rtc_build_examples = false
+rtc_enable_protobuf = true
+use_custom_libcxx = true
+treat_warnings_as_errors = false
+rtc_enable_android_opensl = true
+rtc_enable_android_aaudio = true
+rtc_use_android_media_codec = true
+rtc_enable_libaom = true
+rtc_enable_libvpx = true
+rtc_enable_h264 = true
+rtc_enable_vp8 = true
+rtc_enable_vp9 = true
+rtc_enable_av1 = true
+rtc_enable_bwe_test_logging = false
+rtc_enable_event_tracing = false
+'
+          
+          # 编译
+          ninja -C out/android_x64 libwebrtc
+          
+      - name: 收集编译产物
+        run: |
+          echo "收集编译产物..."
+          mkdir -p ${{ env.OUTPUT_DIR }}/{arm64,x64,universal}
+          
+          # 复制 arm64 AAR
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
+               "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
+          fi
+          
+          # 复制 x64 AAR
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
+               "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
+          fi
+          
+          # 复制 arm64 静态库
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/obj/libwebrtc.a" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/obj/libwebrtc.a" \
+               "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.a"
+          fi
+          
+          # 复制 x64 静态库
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/obj/libwebrtc.a" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/obj/libwebrtc.a" \
+               "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.a"
+          fi
+          
+          # 创建通用 AAR (合并多架构)
+          echo "创建通用 AAR..."
+          TEMP_DIR=$(mktemp -d)
+          
+          # 解压 arm64 AAR
+          if [ -f "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar" ]; then
+            mkdir -p $TEMP_DIR/arm64
+            cd $TEMP_DIR/arm64
+            unzip -q "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
+            cd -
+          fi
+          
+          # 解压 x64 AAR
+          if [ -f "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar" ]; then
+            mkdir -p $TEMP_DIR/x64
+            cd $TEMP_DIR/x64
+            unzip -q "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
+            cd -
+          fi
+          
+          # 合并 JNI 库
+          mkdir -p $TEMP_DIR/universal/jni
+          if [ -d "$TEMP_DIR/arm64/jni" ]; then
+            cp -r $TEMP_DIR/arm64/jni/* $TEMP_DIR/universal/jni/
+          fi
+          if [ -d "$TEMP_DIR/x64/jni" ]; then
+            cp -r $TEMP_DIR/x64/jni/* $TEMP_DIR/universal/jni/
+          fi
+          
+          # 复制其他必要文件
+          if [ -d "$TEMP_DIR/arm64" ]; then
+            find $TEMP_DIR/arm64 -maxdepth 1 -type f -exec cp {} $TEMP_DIR/universal/ \;
+          fi
+          
+          # 打包通用 AAR
+          cd $TEMP_DIR/universal
+          zip -q -r "${{ env.OUTPUT_DIR }}/universal/libwebrtc_universal.aar" *
+          cd -
+          
+          rm -rf $TEMP_DIR
+          
+          # 列出输出文件
+          echo "编译产物列表:"
+          find ${{ env.OUTPUT_DIR }} -type f -name "*.aar" -o -name "*.a" | while read file; do
+            echo "  $(basename $file) - $(du -h $file | cut -f1)"
+          done
+          
+      - name: 创建版本信息文件
+        run: |
+          cat > ${{ env.OUTPUT_DIR }}/version_info.txt << EOF
+WebRTC Android 编译信息
+========================
+编译时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
+GitHub Actions Run: ${{ github.run_number }}
+Commit: ${{ github.sha }}
+包含功能:
+- 回声消除 (AEC)
+- 降噪 (NS)
+- 语音活动检测 (VAD)
+支持架构:
+- arm64-v8a
+- x86_64
+EOF
+          
+      - name: 上传编译产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-android-${{ env.WEBRTC_BRANCH }}-${{ github.run_number }}
+          path: ${{ env.OUTPUT_DIR }}/
+          retention-days: 90
+          
+      - name: 创建 Release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: webrtc-android-${{ env.WEBRTC_BRANCH }}-${{ github.run_number }}
+          name: WebRTC Android ${{ env.WEBRTC_BRANCH }} - Build ${{ github.run_number }}
+          body: |
+            WebRTC Android 编译产物
+            
+            ## 编译信息
+            - WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
+            - 编译时间: ${{ github.event.head_commit.timestamp }}
+            - Commit: ${{ github.sha }}
+            
+            ## 包含功能
+            - 回声消除 (AEC)
+            - 降噪 (NS)
+            - 语音活动检测 (VAD)
+            
+            ## 支持架构
+            - arm64-v8a
+            - x86_64
+            
+            ## 文件说明
+            - `arm64/libwebrtc_arm64.aar` - ARM64 架构的 AAR 包
+            - `x64/libwebrtc_x64.aar` - x86_64 架构的 AAR 包
+            - `universal/libwebrtc_universal.aar` - 包含所有架构的通用 AAR 包
+            - `arm64/libwebrtc_arm64.a` - ARM64 架构的静态库
+            - `x64/libwebrtc_x64.a` - x86_64 架构的静态库
+          files: |
+            ${{ env.OUTPUT_DIR }}/**/*.aar
+            ${{ env.OUTPUT_DIR }}/**/*.a
+            ${{ env.OUTPUT_DIR }}/version_info.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 编译完成
+        run: |
+          echo "========================================="
+          echo "WebRTC Android 编译完成！"
+          echo "========================================="
+          echo "WebRTC 分支: ${{ env.WEBRTC_BRANCH }}"
+          echo "输出目录: ${{ env.OUTPUT_DIR }}"
+          echo "========================================="
