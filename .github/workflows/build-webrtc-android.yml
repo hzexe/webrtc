@@ -29,7 +29,7 @@ jobs:
       - name: 设置环境变量
         run: |
           echo "WEBRTC_BRANCH=${{ env.WEBRTC_BRANCH }}" >> $GITHUB_ENV
-          echo "WEBRTC_SRC_DIR=${{ github.workspace }}/src" >> $GITHUB_ENV
+          echo "WEBRTC_SRC_DIR=${{ github.workspace }}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${{ github.workspace }}/output" >> $GITHUB_ENV
           
       - name: 安装依赖
@@ -176,25 +176,24 @@ jobs:
           
       - name: 创建版本信息文件
         run: |
-          cat > ${{ env.OUTPUT_DIR }}/version_info.txt << EOF
-WebRTC Android 编译信息
-========================
-编译时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
-GitHub Actions Run: ${{ github.run_number }}
-Commit: ${{ github.sha }}
-包含功能:
-- 回声消除 (AEC)
-- 降噪 (NS)
-- 语音活动检测 (VAD)
-已移除功能:
-- 视频编解码器 (VP8, VP9, H.264, AV1)
-- P2P 网络功能 (PeerConnection, DataChannel, SCTP)
-支持架构:
-- arm64-v8a
-- x86_64
-EOF
-          
+          cat > ${{ env.OUTPUT_DIR }}/version_info.txt << 'EOF'
+          WebRTC Android 编译信息
+          ========================
+          编译时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
+          GitHub Actions Run: ${{ github.run_number }}
+          Commit: ${{ github.sha }}
+          包含功能:
+          - 回声消除 (AEC)
+          - 降噪 (NS)
+          - 语音活动检测 (VAD)
+          已移除功能:
+          - 视频编解码器 (VP8, VP9, H.264, AV1)
+          - P2P 网络功能 (PeerConnection, DataChannel, SCTP)
+          支持架构:
+          - arm64-v8a
+          - x86_64
+          EOF
       - name: 生成安装文档
         run: |
           echo "生成 Android 安装文档..."
