@@ -52,7 +52,7 @@ set -e  # 遇到错误立即退出
 #
 # 推荐使用 7605，因为它是较新的稳定版本，适合生产环境
 # 注意：传入分支名称即可，如 7605、7604、main、lkgr 等
-WEBRTC_BRANCH="${1:-7605}"
+WEBRTC_BRANCH="${1:-branch-heads/7606}"
 
 # 工作目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
