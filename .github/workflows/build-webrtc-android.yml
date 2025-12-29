@@ -72,6 +72,39 @@ jobs:
           mkdir -p ${{ env.WEBRTC_SRC_DIR }}
           cd ${{ env.WEBRTC_SRC_DIR }}
           
+          # 检查源码是否已经同步完成
+          if [ -d "src" ] && [ -f "src/.gclient" ]; then
+            echo "WebRTC 源码已存在，检查分支是否匹配..."
+            cd src
+            
+            # 获取当前分支
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            echo "当前分支: $CURRENT_BRANCH"
+            
+            # 检查是否在正确的分支上
+            if [ "$CURRENT_BRANCH" == "${{ env.WEBRTC_BRANCH }}" ]; then
+              echo "已在正确的分支上，跳过源码同步"
+              exit 0
+            else
+              echo "分支不匹配，需要切换到 ${{ env.WEBRTC_BRANCH }}"
+              git fetch origin
+              
+              # 尝试检出分支（按优先级尝试不同的分支格式）
+              # 1. 尝试里程碑分支格式：branch-heads/7605
+              git checkout -b ${{ env.WEBRTC_BRANCH }} origin/branch-heads/${{ env.WEBRTC_BRANCH }} 2>/dev/null || \
+              # 2. 尝试 origin 前缀格式：origin/main
+              git checkout -b ${{ env.WEBRTC_BRANCH }} origin/${{ env.WEBRTC_BRANCH }} 2>/dev/null || \
+              # 3. 尝试本地分支
+              git checkout ${{ env.WEBRTC_BRANCH }}
+              
+              echo "分支切换完成，跳过 gclient sync"
+              exit 0
+            fi
+          fi
+          
+          # 源码不存在，执行完整的同步流程
+          echo "WebRTC 源码不存在，开始下载..."
+          
           # 初始化 depot_tools
           fetch --nohooks webrtc_android
           
@@ -89,6 +122,8 @@ jobs:
           
           # 运行 hooks
           gclient sync
+          
+          echo "WebRTC 源码同步完成"
           
       - name: 编译 arm64-v8a 架构
         run: |
