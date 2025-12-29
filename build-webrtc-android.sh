@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# WebRTC Android 本地编译脚本
+# WebRTC Android 本地编译脚本（Google Colab 版本）
 # 
 # 功能说明：
 # - 编译 WebRTC for Android，包含回声消除(AEC)、降噪(NS)、语音活动检测(VAD)
@@ -9,17 +9,27 @@
 # - 生成 AAR 包和静态库
 # - 生成 Java API 文档
 # - 创建安装文档和版本信息
+# - 编译产物自动保存到 Google Drive（/content/gdrive）
 #
-# 使用方法：
-#   chmod +x build-webrtc-android.sh
-#   ./build-webrtc-android.sh [分支名称]
+# 使用方法（Google Colab）：
+#   1. 挂载 Google Drive:
+#      from google.colab import drive
+#      drive.mount('/content/drive')
+#   
+#   2. 创建符号链接:
+#      !mkdir -p /content/gdrive
+#      !ln -s /content/drive/MyDrive /content/gdrive
+#   
+#   3. 运行编译脚本:
+#      !chmod +x build-webrtc-android.sh
+#      !./build-webrtc-android.sh [分支名称]
 #
 # 参数说明：
 #   分支名称 - WebRTC 分支，例如 m120、m121（默认：m120）
 #
 # 系统要求：
-#   - Linux Debian/Ubuntu 系统
-#   - 至少 20GB 可用磁盘空间
+#   - Google Colab 环境（Linux Debian/Ubuntu 系统）
+#   - 至少 20GB 可用磁盘空间（建议使用 Google Drive）
 #   - 8GB 以上内存
 #   - 稳定的网络连接（用于下载源码）
 ################################################################################
@@ -36,10 +46,15 @@ WEBRTC_BRANCH="${1:-m120}"
 # 工作目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBRTC_SRC_DIR="${SCRIPT_DIR}/webrtc_android"
-OUTPUT_DIR="${SCRIPT_DIR}/output"
+OUTPUT_DIR="/content/gdrive/MyDrive/webrtc_android_output"
 
 # depot_tools 路径
 DEPOT_TOOLS_DIR="${HOME}/depot_tools"
+
+# 编译并行任务数（ninja -j 参数）
+# 设置为 0 表示使用所有可用的CPU核心
+# 可以根据系统资源调整，例如：4, 8, 16 等
+NINJA_JOBS=0
 
 # 编译架构列表
 ARCHITECTURES=("arm64" "x64")
@@ -288,9 +303,15 @@ build_architecture() {
     print_info "生成构建配置..."
     gn gen "out/android_$arch" --args="$gn_args"
     
-    # 编译
-    print_info "开始编译（这可能需要较长时间）..."
-    ninja -C "out/android_$arch" libwebrtc
+    # 编译（使用多核优化）
+    print_info "开始编译（这可能需要较长时间，使用 $NINJA_JOBS 个并行任务）..."
+    if [ "$NINJA_JOBS" -eq 0 ]; then
+        print_info "使用所有可用的CPU核心进行编译"
+        ninja -C "out/android_$arch" libwebrtc
+    else
+        print_info "使用 $NINJA_JOBS 个CPU核心进行编译"
+        ninja -C "out/android_$arch" -j "$NINJA_JOBS" libwebrtc
+    fi
     
     print_success "$arch 架构编译完成"
 }
@@ -565,7 +586,25 @@ main() {
     echo "  WebRTC 分支: $WEBRTC_BRANCH"
     echo "  工作目录: $WEBRTC_SRC_DIR"
     echo "  输出目录: $OUTPUT_DIR"
+    
+    # 显示CPU核心数
+    if [ -f /proc/cpuinfo ]; then
+        CPU_CORES=$(nproc 2>/dev/null || echo "未知")
+        echo "  CPU 核心数: $CPU_CORES"
+    fi
+    
+    # 显示ninja并行任务数
+    if [ "$NINJA_JOBS" -eq 0 ]; then
+        echo "  Ninja 并行任务: 自动（使用所有可用核心）"
+    else
+        echo "  Ninja 并行任务: $NINJA_JOBS"
+    fi
+    
     echo ""
+    
+    # 创建输出目录（用于 Google Colab 环境）
+    print_info "创建输出目录: $OUTPUT_DIR"
+    mkdir -p "$OUTPUT_DIR"
     
     # 检查环境
     check_environment
