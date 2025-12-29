@@ -214,20 +214,21 @@ install_depot_tools() {
     print_header "安装 depot_tools"
     
     if [ -d "$DEPOT_TOOLS_DIR" ]; then
-        print_info "depot_tools 已存在，跳过安装"
+        print_info "depot_tools 目录已存在，跳过下载"
     else
         print_info "正在下载 depot_tools..."
         cd "$HOME"
         git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-        
-        # 添加到 PATH
-        if ! grep -q "$DEPOT_TOOLS_DIR" ~/.bashrc 2>/dev/null; then
-            echo "export PATH=\"\$PATH:$DEPOT_TOOLS_DIR\"" >> ~/.bashrc
-            print_info "已将 depot_tools 添加到 ~/.bashrc"
-        fi
-        
-        export PATH="$PATH:$DEPOT_TOOLS_DIR"
-        print_success "depot_tools 安装完成"
+        print_success "depot_tools 下载完成"
+    fi
+    
+    # 添加到 PATH（无论目录是否已存在）
+    export PATH="$PATH:$DEPOT_TOOLS_DIR"
+    
+    # 添加到 ~/.bashrc（如果尚未添加）
+    if ! grep -q "$DEPOT_TOOLS_DIR" ~/.bashrc 2>/dev/null; then
+        echo "export PATH=\"\$PATH:$DEPOT_TOOLS_DIR\"" >> ~/.bashrc
+        print_info "已将 depot_tools 添加到 ~/.bashrc"
     fi
     
     # 验证安装
@@ -235,6 +236,8 @@ install_depot_tools() {
         print_success "gclient 命令可用"
     else
         print_error "gclient 命令不可用，请检查 depot_tools 安装"
+        print_error "DEPOT_TOOLS_DIR: $DEPOT_TOOLS_DIR"
+        print_error "当前 PATH: $PATH"
         exit 1
     fi
 }
