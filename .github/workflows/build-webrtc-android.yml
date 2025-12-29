@@ -32,6 +32,14 @@ jobs:
           echo "WEBRTC_SRC_DIR=${{ github.workspace }}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${{ github.workspace }}/output" >> $GITHUB_ENV
           
+      - name: 缓存 depot_tools
+        uses: actions/cache@v4
+        with:
+          path: ~/depot_tools
+          key: depot-tools-${{ env.DEPOT_TOOLS_VERSION }}
+          restore-keys: |
+            depot-tools-
+          
       - name: 安装依赖
         run: |
           sudo apt-get update
@@ -49,9 +57,9 @@ jobs:
         run: |
           cd $HOME
           
-          # 检查 depot_tools 目录是否存在
+          # 检查 depot_tools 目录是否存在（可能来自缓存）
           if [ -d "depot_tools" ]; then
-            echo "depot_tools 目录已存在，跳过下载"
+            echo "depot_tools 目录已存在（可能来自缓存），跳过下载"
           else
             echo "正在下载 depot_tools..."
             git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
@@ -67,6 +75,18 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
+      - name: 缓存 WebRTC 源码
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.WEBRTC_SRC_DIR }}/src
+            ${{ env.WEBRTC_SRC_DIR }}/.gclient
+            ${{ env.WEBRTC_SRC_DIR }}/.gclient_entries
+          key: webrtc-src-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/.gclient') }}
+          restore-keys: |
+            webrtc-src-${{ env.WEBRTC_BRANCH }}-
+            webrtc-src-
+            
       - name: 同步 WebRTC 源码
         run: |
           echo "开始同步 WebRTC 源码 (分支: ${{ env.WEBRTC_BRANCH }})..."
@@ -126,6 +146,15 @@ jobs:
           
           echo "WebRTC 源码同步完成"
           
+      - name: 缓存编译产物 (arm64)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64
+          key: webrtc-build-arm64-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
+          restore-keys: |
+            webrtc-build-arm64-${{ env.WEBRTC_BRANCH }}-
+            webrtc-build-arm64-
+            
       - name: 编译 arm64-v8a 架构
         run: |
           echo "开始编译 arm64-v8a 架构..."
@@ -159,6 +188,15 @@ jobs:
           # 显示磁盘使用情况
           df -h
           
+      - name: 缓存编译产物 (x64)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64
+          key: webrtc-build-x64-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
+          restore-keys: |
+            webrtc-build-x64-${{ env.WEBRTC_BRANCH }}-
+            webrtc-build-x64-
+            
       - name: 编译 x86_64 架构
         run: |
           echo "开始编译 x86_64 架构..."
