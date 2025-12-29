@@ -41,7 +41,18 @@ set -e  # 遇到错误立即退出
 ################################################################################
 
 # WebRTC 分支（可通过命令行参数覆盖）
-WEBRTC_BRANCH="${1:-m120}"
+# 可选分支说明：
+#   - 7605: Chrome 7605 里程碑分支（2024年，推荐，稳定）
+#   - 7604: Chrome 7604 里程碑分支（2024年，稳定）
+#   - 7599: Chrome 7599 里程碑分支（2024年，稳定）
+#   - main: 主分支，包含最新功能和修复（较新，但可能有未测试的更改）
+#   - lkgr: 最后已知的良好版本（稳定，相对较新）
+#   - master: 旧的主分支名称，与 main 基本相同
+#   - m73-m79: 旧里程碑分支（2019年，较旧）
+#
+# 推荐使用 7605，因为它是较新的稳定版本，适合生产环境
+# 注意：传入分支名称即可，如 7605、7604、main、lkgr 等
+WEBRTC_BRANCH="${1:-7605}"
 
 # 工作目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -268,12 +279,29 @@ sync_webrtc_source() {
     cd src
     git fetch origin
     
-    # 尝试检出分支
-    if git checkout -b "$WEBRTC_BRANCH" "origin/$WEBRTC_BRANCH" 2>/dev/null; then
-        print_success "成功切换到分支 $WEBRTC_BRANCH"
-    elif git checkout "$WEBRTC_BRANCH" 2>/dev/null; then
-        print_success "成功切换到分支 $WEBRTC_BRANCH"
-    else
+    # 尝试检出分支（按优先级尝试不同的分支格式）
+    BRANCH_FOUND=false
+    
+    # 1. 尝试里程碑分支格式：branch-heads/7605
+    if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/branch-heads/$WEBRTC_BRANCH" 2>/dev/null; then
+        print_success "成功切换到分支 branch-heads/$WEBRTC_BRANCH"
+        BRANCH_FOUND=true
+    fi
+    
+    # 2. 尝试 origin 前缀格式：origin/main
+    if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/$WEBRTC_BRANCH" 2>/dev/null; then
+        print_success "成功切换到分支 origin/$WEBRTC_BRANCH"
+        BRANCH_FOUND=true
+    fi
+    
+    # 3. 尝试本地分支
+    if ! $BRANCH_FOUND && git checkout "$WEBRTC_BRANCH" 2>/dev/null; then
+        print_success "成功切换到本地分支 $WEBRTC_BRANCH"
+        BRANCH_FOUND=true
+    fi
+    
+    # 如果所有尝试都失败
+    if ! $BRANCH_FOUND; then
         print_error "无法切换到分支 $WEBRTC_BRANCH"
         print_info "可用的分支:"
         git branch -r | grep -v HEAD
