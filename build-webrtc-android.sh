@@ -102,11 +102,11 @@ ARCHITECTURES=("arm64" "x64")
 # - enable_pgo=false: 禁用 PGO（Android平台兼容性）
 # - enable_remoting=false: 禁用远程桌面
 # - enable_widevine=false: 禁用 Widevine DRM
-# - android_static_analysis=false: 禁用 Android 静态分析（避免 AUTONINJA_BUILD_ID 错误）
+# - android_static_analysis="off": 禁用 Android 静态分析（避免 AUTONINJA_BUILD_ID 错误）
 
-GN_ARGS_ARM64='target_os="android" target_cpu="arm64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=false'
+GN_ARGS_ARM64='target_os="android" target_cpu="arm64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis="off"'
 
-GN_ARGS_X64='target_os="android" target_cpu="x64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=false'
+GN_ARGS_X64='target_os="android" target_cpu="x64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis="off"'
 
 ################################################################################
 # 颜色输出函数
@@ -335,6 +335,10 @@ build_architecture() {
     # 生成构建配置
     print_info "生成构建配置..."
     gn gen "out/android_$arch" --args="$gn_args"
+    
+    # 列出所有可用的 GN 参数（用于后续优化）
+    print_info "列出所有可用的 GN 参数..."
+    gn args --list "out/android_$arch"
     
     # 编译（使用多核优化）
     print_info "开始编译（这可能需要较长时间，使用 $NINJA_JOBS 个并行任务）..."

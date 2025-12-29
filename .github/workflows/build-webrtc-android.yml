@@ -135,12 +135,11 @@ jobs:
           # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
           # 添加优化参数以减少编译产物大小和磁盘使用
           # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          gn gen out/android_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=false"
+          gn gen out/android_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=\"off\""
           
           # 列出所有可用的 GN 参数（用于后续优化）
           echo "列出所有可用的 GN 参数..."
-          gn args --list out/android_arm64 > ${{ env.OUTPUT_DIR }}/gn_args_arm64.txt
-          echo "GN 参数列表已保存到: ${{ env.OUTPUT_DIR }}/gn_args_arm64.txt"
+          gn args --list out/android_arm64
           
           # 编译
           ninja -C out/android_arm64 libwebrtc
@@ -168,12 +167,11 @@ jobs:
           # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
           # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
           # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          gn gen out/android_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=false"
+          gn gen out/android_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis=\"off\""
           
           # 列出所有可用的 GN 参数（用于后续优化）
           echo "列出所有可用的 GN 参数..."
-          gn args --list out/android_x64 > ${{ env.OUTPUT_DIR }}/gn_args_x64.txt
-          echo "GN 参数列表已保存到: ${{ env.OUTPUT_DIR }}/gn_args_x64.txt"
+          gn args --list out/android_x64
           
           # 编译
           ninja -C out/android_x64 libwebrtc
