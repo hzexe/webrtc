@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ################################################################################
-# WebRTC Android 本地编译脚本（Google Colab 版本）
+# WebRTC Android 本地编译脚本
 # 
 # 功能说明：
 # - 编译 WebRTC for Android，包含回声消除(AEC)、降噪(NS)、语音活动检测(VAD)
@@ -9,29 +9,27 @@
 # - 生成 AAR 包和静态库
 # - 生成 Java API 文档
 # - 创建安装文档和版本信息
-# - 编译产物自动保存到 Google Drive（/content/gdrive）
+# - 支持发布到 GitHub Release
 #
-# 使用方法（Google Colab）：
-#   1. 挂载 Google Drive:
-#      from google.colab import drive
-#      drive.mount('/content/drive')
-#   
-#   2. 创建符号链接:
-#      !mkdir -p /content/gdrive
-#      !ln -s /content/drive/MyDrive /content/gdrive
-#   
-#   3. 运行编译脚本:
-#      !chmod +x build-webrtc-android.sh
-#      !./build-webrtc-android.sh [分支名称]
+# 使用方法：
+#   chmod +x build-webrtc-android.sh
+#   ./build-webrtc-android.sh [分支名称] [--publish]
 #
 # 参数说明：
-#   分支名称 - WebRTC 分支，例如 m120、m121（默认：m120）
+#   分支名称 - WebRTC 分支，例如 7605、7604、main、lkgr（默认：7605）
+#   --publish - 可选，发布到 GitHub Release（需要配置 GitHub token）
 #
 # 系统要求：
-#   - Google Colab 环境（Linux Debian/Ubuntu 系统）
-#   - 至少 20GB 可用磁盘空间（建议使用 Google Drive）
+#   - Linux Debian/Ubuntu 系统
+#   - 至少 20GB 可用磁盘空间
 #   - 8GB 以上内存
 #   - 稳定的网络连接（用于下载源码）
+#   - gh CLI 工具（用于发布到 GitHub，可选）
+#
+# 发布到 GitHub 要求：
+#   - 已安装 gh CLI 工具
+#   - 已执行 gh auth login 进行认证
+#   - 有权限创建 Release 的 GitHub token
 ################################################################################
 
 set -e  # 遇到错误立即退出
@@ -42,6 +40,7 @@ set -e  # 遇到错误立即退出
 
 # WebRTC 分支（可通过命令行参数覆盖）
 # 可选分支说明：
+#   - 7606: Chrome 7606 里程碑分支（2025年，推荐，稳定）
 #   - 7605: Chrome 7605 里程碑分支（2024年，推荐，稳定）
 #   - 7604: Chrome 7604 里程碑分支（2024年，稳定）
 #   - 7599: Chrome 7599 里程碑分支（2024年，稳定）
@@ -57,7 +56,10 @@ WEBRTC_BRANCH="${1:-branch-heads/7606}"
 # 工作目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBRTC_SRC_DIR="${SCRIPT_DIR}/webrtc_android"
-OUTPUT_DIR="/content/gdrive/MyDrive/webrtc_android_output"
+OUTPUT_DIR="${SCRIPT_DIR}/output"
+
+# 是否发布到 GitHub
+PUBLISH_TO_GITHUB=false
 
 # depot_tools 路径
 DEPOT_TOOLS_DIR="${HOME}/depot_tools"

@@ -67,7 +67,14 @@ jobs:
           # 切换到指定分支
           cd src
           git fetch origin
-          git checkout -b ${{ env.WEBRTC_BRANCH }} origin/${{ env.WEBRTC_BRANCH }} || git checkout ${{ env.WEBRTC_BRANCH }}
+          
+          # 尝试检出分支（按优先级尝试不同的分支格式）
+          # 1. 尝试里程碑分支格式：branch-heads/7605
+          git checkout -b ${{ env.WEBRTC_BRANCH }} origin/branch-heads/${{ env.WEBRTC_BRANCH }} 2>/dev/null || \
+          # 2. 尝试 origin 前缀格式：origin/main
+          git checkout -b ${{ env.WEBRTC_BRANCH }} origin/${{ env.WEBRTC_BRANCH }} 2>/dev/null || \
+          # 3. 尝试本地分支
+          git checkout ${{ env.WEBRTC_BRANCH }}
           
           # 运行 hooks
           gclient sync
@@ -346,6 +353,103 @@ jobs:
             ${{ env.OUTPUT_DIR }}/version_info.txt
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 安装 Maven
+        run: |
+          sudo apt-get install -y maven
+          
+      - name: 发布到 GitHub Packages
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        run: |
+          echo "发布到 GitHub Packages..."
+          
+          # 定义版本号
+          VERSION="${{ env.WEBRTC_BRANCH }}-${{ github.run_number }}"
+          
+          # 创建 Maven 临时目录
+          MAVEN_TEMP_DIR="${{ runner.temp }}/maven-deploy"
+          mkdir -p "$MAVEN_TEMP_DIR"
+          
+          # 为每个架构创建 Maven 项目并部署
+          for ARCH in "arm64" "x64" "universal"; do
+            echo "处理 $ARCH 架构..."
+            
+            # 创建 Maven 项目目录
+            PROJECT_DIR="$MAVEN_TEMP_DIR/libwebrtc-$ARCH"
+            mkdir -p "$PROJECT_DIR"
+            
+            # 创建 pom.xml
+            cat > "$PROJECT_DIR/pom.xml" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <project xmlns="http://maven.apache.org/POM/4.0.0"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                   http://maven.apache.org/xsd/maven-4.0.0.xsd">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.webrtc</groupId>
+            <artifactId>libwebrtc-$ARCH</artifactId>
+            <version>$VERSION</version>
+            <packaging>aar</packaging>
+            <name>WebRTC Android $ARCH</name>
+            <description>WebRTC Android library with AEC, NS, and VAD support ($ARCH)</description>
+            <url>https://github.com/${{ github.repository }}</url>
+            <licenses>
+              <license>
+                <name>BSD 3-Clause</name>
+                <url>https://chromium.googlesource.com/chromium/src/+/refs/heads/master/LICENSE</url>
+              </license>
+            </licenses>
+            <scm>
+              <url>https://github.com/${{ github.repository }}</url>
+              <connection>scm:git:git://github.com/${{ github.repository }}.git</connection>
+            </scm>
+            <properties>
+              <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            </properties>
+            <distributionManagement>
+              <repository>
+                <id>github</id>
+                <name>GitHub Packages</name>
+                <url>https://maven.pkg.github.com/${{ github.repository }}</url>
+              </repository>
+            </distributionManagement>
+          </project>
+          EOF
+            
+            # 复制 AAR 文件
+            mkdir -p "$PROJECT_DIR/target"
+            if [ "$ARCH" == "arm64" ]; then
+              cp "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar" "$PROJECT_DIR/target/libwebrtc-$ARCH-$VERSION.aar"
+            elif [ "$ARCH" == "x64" ]; then
+              cp "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar" "$PROJECT_DIR/target/libwebrtc-$ARCH-$VERSION.aar"
+            else
+              cp "${{ env.OUTPUT_DIR }}/universal/libwebrtc_universal.aar" "$PROJECT_DIR/target/libwebrtc-$ARCH-$VERSION.aar"
+            fi
+            
+            # 创建 settings.xml
+            cat > "$MAVEN_TEMP_DIR/settings.xml" << EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+            http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>\${env.GITHUB_ACTOR}</username>
+                <password>\${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+            
+            # 部署到 GitHub Packages
+            cd "$PROJECT_DIR"
+            mvn deploy -s "$MAVEN_TEMP_DIR/settings.xml" -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }} || echo "部署 $ARCH 失败，继续..."
+          done
+          
+          echo "GitHub Packages 发布完成"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
