@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       webrtc_branch:
-        description: 'WebRTC 分支 (例如: m120, m121)'
+        description: 'WebRTC 分支 (例如: branch-heads/7605)'
         required: false
-        default: 'm120'
+        default: 'branch-heads/7605'
         type: string
   push:
     branches: [ main, master ]
@@ -15,7 +15,7 @@ on:
 
 env:
   DEPOT_TOOLS_VERSION: 'main'
-  WEBRTC_BRANCH: ${{ github.event.inputs.webrtc_branch || 'm120' }}
+  WEBRTC_BRANCH: ${{ github.event.inputs.webrtc_branch || 'branch-heads/7605' }}
 
 jobs:
   build-webrtc:
