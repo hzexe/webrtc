@@ -312,6 +312,20 @@ sync_webrtc_source() {
     print_info "执行 gclient sync..."
     gclient sync
     
+    # 安装 sysroot（WebRTC 编译需要）
+    print_info "安装 sysroot..."
+    if [ -f "build/linux/sysroot_scripts/install-sysroot.py" ]; then
+        python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64 || {
+            print_warning "sysroot 安装失败，尝试使用 python..."
+            python build/linux/sysroot_scripts/install-sysroot.py --arch=amd64 || {
+                print_warning "sysroot 安装失败，继续编译（可能会失败）"
+            }
+        }
+        print_success "sysroot 安装完成"
+    else
+        print_warning "sysroot 安装脚本不存在，跳过"
+    fi
+    
     print_success "WebRTC 源码同步完成"
 }
 
