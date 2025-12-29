@@ -31,6 +31,9 @@ jobs:
           echo "WEBRTC_BRANCH=${{ env.WEBRTC_BRANCH }}" >> $GITHUB_ENV
           echo "WEBRTC_SRC_DIR=${{ github.workspace }}" >> $GITHUB_ENV
           echo "OUTPUT_DIR=${{ github.workspace }}/output" >> $GITHUB_ENV
+          # 将分支名称中的 / 替换为 -，用于 artifact 和 release 名称
+          SAFE_BRANCH=$(echo "${{ env.WEBRTC_BRANCH }}" | sed 's/\//-/g')
+          echo "WEBRTC_BRANCH_SAFE=$SAFE_BRANCH" >> $GITHUB_ENV
           
       - name: 缓存 depot_tools
         uses: actions/cache@v4
@@ -82,9 +85,9 @@ jobs:
             ${{ env.WEBRTC_SRC_DIR }}/src
             ${{ env.WEBRTC_SRC_DIR }}/.gclient
             ${{ env.WEBRTC_SRC_DIR }}/.gclient_entries
-          key: webrtc-src-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/.gclient') }}
+          key: webrtc-src-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/.gclient') }}
           restore-keys: |
-            webrtc-src-${{ env.WEBRTC_BRANCH }}-
+            webrtc-src-${{ env.WEBRTC_BRANCH_SAFE }}-
             webrtc-src-
             
       - name: 同步 WebRTC 源码
@@ -150,9 +153,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64
-          key: webrtc-build-arm64-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
+          key: webrtc-build-arm64-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
           restore-keys: |
-            webrtc-build-arm64-${{ env.WEBRTC_BRANCH }}-
+            webrtc-build-arm64-${{ env.WEBRTC_BRANCH_SAFE }}-
             webrtc-build-arm64-
             
       - name: 编译 arm64-v8a 架构
@@ -192,9 +195,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64
-          key: webrtc-build-x64-${{ env.WEBRTC_BRANCH }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
+          key: webrtc-build-x64-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
           restore-keys: |
-            webrtc-build-x64-${{ env.WEBRTC_BRANCH }}-
+            webrtc-build-x64-${{ env.WEBRTC_BRANCH_SAFE }}-
             webrtc-build-x64-
             
       - name: 编译 x86_64 架构
@@ -386,7 +389,7 @@ jobs:
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
-          name: webrtc-android-${{ env.WEBRTC_BRANCH }}-${{ github.run_number }}
+          name: webrtc-android-${{ env.WEBRTC_BRANCH_SAFE }}-${{ github.run_number }}
           path: ${{ env.OUTPUT_DIR }}/
           retention-days: 90
           
@@ -394,7 +397,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: webrtc-android-${{ env.WEBRTC_BRANCH }}-${{ github.run_number }}
+          tag_name: webrtc-android-${{ env.WEBRTC_BRANCH_SAFE }}-${{ github.run_number }}
           name: WebRTC Android ${{ env.WEBRTC_BRANCH }} - Build ${{ github.run_number }}
           body: |
             WebRTC Android 编译产物
