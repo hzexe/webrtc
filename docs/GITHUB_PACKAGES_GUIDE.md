@@ -59,7 +59,7 @@ allprojects {
         
         // 添加 GitHub Packages 仓库
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = "YOUR_GITHUB_USERNAME"
                 password = "YOUR_GITHUB_TOKEN"
@@ -70,8 +70,6 @@ allprojects {
 ```
 
 **注意：** 
-- 将 `YOUR_USERNAME` 替换为你的 GitHub 用户名
-- 将 `YOUR_REPOSITORY` 替换为 WebRTC 仓库名称
 - 将 `YOUR_GITHUB_TOKEN` 替换为你的 GitHub Personal Access Token
 
 **安全提示：** 不要将 token 直接提交到代码仓库中。建议使用以下方式之一：
@@ -92,7 +90,7 @@ file("local.properties").withInputStream { githubProps.load(it) }
 allprojects {
     repositories {
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = githubProps.getProperty("github.username")
                 password = githubProps.getProperty("github.token")
@@ -110,7 +108,7 @@ file("local.properties").inputStream().use { githubProps.load(it) }
 allprojects {
     repositories {
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = githubProps.getProperty("github.username")
                 password = githubProps.getProperty("github.token")
@@ -133,7 +131,7 @@ export GITHUB_TOKEN="YOUR_GITHUB_TOKEN"
 allprojects {
     repositories {
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = System.getenv("GITHUB_USERNAME")
                 password = System.getenv("GITHUB_TOKEN")
@@ -302,7 +300,7 @@ allprojects {
         file("local.properties").withInputStream { githubProps.load(it) }
         
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = githubProps.getProperty("github.username")
                 password = githubProps.getProperty("github.token")
@@ -385,7 +383,7 @@ allprojects {
         file("local.properties").inputStream().use { githubProps.load(it) }
         
         maven {
-            url = uri("https://maven.pkg.github.com/YOUR_USERNAME/YOUR_REPOSITORY")
+            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
             credentials {
                 username = githubProps.getProperty("github.username")
                 password = githubProps.getProperty("github.token")

@@ -142,114 +142,31 @@ dependencies {
 
 ### 使用 GitHub Packages（推荐）
 
-GitHub Packages 提供了更方便的依赖管理方式。详细配置请参考 [docs/GITHUB_PACKAGES_GUIDE.md](docs/GITHUB_PACKAGES_GUIDE.md)。
+GitHub Packages 提供了更方便的依赖管理方式。详细的配置步骤、认证说明和使用示例，请参阅 [docs/GITHUB_PACKAGES_GUIDE.md](docs/GITHUB_PACKAGES_GUIDE.md)。
 
 **注意：** 即使是公开的 GitHub 仓库，访问 GitHub Packages **仍然需要认证**。这是 GitHub 的安全策略，所有对 GitHub Packages 的访问（包括读取公开包）都需要使用 GitHub Token 进行认证。
 
-#### 快速配置步骤
+**快速开始：**
 
-1. **获取 GitHub Personal Access Token**
-   - 访问 https://github.com/settings/tokens
-   - 生成新 token，需要 `read:packages` 权限
-
-2. **配置 Maven 仓库**
-
-**使用 build.gradle (Groovy DSL)：**
-
-在根目录的 `build.gradle` 中添加：
+1. 获取 GitHub Personal Access Token（需要 `read:packages` 权限）
+2. 在项目的 `build.gradle` 或 `build.gradle.kts` 中配置 Maven 仓库和认证信息
+3. 添加 WebRTC 依赖：
 
 ```gradle
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        
-        // 添加 GitHub Packages 仓库
-        def githubProps = new Properties()
-        file("local.properties").withInputStream { githubProps.load(it) }
-        
-        maven {
-            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
-            credentials {
-                username = githubProps.getProperty("github.username")
-                password = githubProps.getProperty("github.token")
-            }
-        }
-    }
-}
-```
-
-在 `app/build.gradle` 中添加依赖：
-
-```gradle
+// 使用 build.gradle (Groovy DSL)
 dependencies {
-    // ARM64 架构（推荐）
     implementation 'com.webrtc:libwebrtc-arm64:VERSION'
-    
-    // x86_64 架构
-    // implementation 'com.webrtc:libwebrtc-x64:VERSION'
-    
-    // Universal 版本
-    // implementation 'com.webrtc:libwebrtc-universal:VERSION'
 }
 ```
 
-**使用 build.gradle.kts (Kotlin DSL)：**
-
-在根目录的 `build.gradle.kts` 中添加：
-
 ```kotlin
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        
-        // 添加 GitHub Packages 仓库
-        val githubProps = Properties()
-        file("local.properties").inputStream().use { githubProps.load(it) }
-        
-        maven {
-            url = uri("https://maven.pkg.github.com/hzexe/webrtc")
-            credentials {
-                username = githubProps.getProperty("github.username")
-                password = githubProps.getProperty("github.token")
-            }
-        }
-    }
-}
-```
-
-在 `app/build.gradle.kts` 中添加依赖：
-
-```kotlin
+// 使用 build.gradle.kts (Kotlin DSL)
 dependencies {
-    // ARM64 架构（推荐）
     implementation("com.webrtc:libwebrtc-arm64:VERSION")
-    
-    // x86_64 架构
-    // implementation("com.webrtc:libwebrtc-x64:VERSION")
-    
-    // Universal 版本
-    // implementation("com.webrtc:libwebrtc-universal:VERSION")
 }
 ```
 
-3. **配置认证信息**
-
-在 `local.properties` 文件中添加（不要提交到 Git）：
-
-```properties
-github.username=YOUR_GITHUB_USERNAME
-github.token=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-4. **同步项目**
-
-在 Android Studio 中点击 "Sync Now" 或运行：
-
-```bash
-./gradlew clean build
-```
+**注意：** 将 `VERSION` 替换为实际的版本号，例如：`branch-heads-7605-1`
 
 ### 查看 Java API 文档
 

@@ -99,14 +99,34 @@ ARCHITECTURES=("arm64" "x64")
 # - use_rtti=false: 禁用 RTTI（减少二进制大小）
 # - use_exceptions=false: 禁用异常（减少二进制大小）
 # - symbol_level=0: 禁用调试符号（减小体积）
-# - enable_pgo=false: 禁用 PGO（Android平台兼容性）
 # - enable_remoting=false: 禁用远程桌面
 # - enable_widevine=false: 禁用 Widevine DRM
 # - android_static_analysis="off": 禁用 Android 静态分析（避免 AUTONINJA_BUILD_ID 错误）
+# - enable_stripping=true: 启用符号剥离以减小二进制大小
+# - rtc_video_psnr=false: 禁用视频 PSNR 计算（已禁用视频编解码器）
+# - enable_rust_cxx=false: 禁用 Rust CXX 绑定
+# - enable_rust=false: 禁用 Rust 支持
+# - libyuv_disable_jpeg=true: 禁用 libyuv 的 JPEG 支持
+# - libyuv_disable_rvv=true: 禁用 libyuv 的 RVV 支持
+# - libyuv_include_tests=false: 禁用 libyuv 测试
+# - libyuv_use_absl_flags=false: 禁用 libyuv 的 absl flags
+# - perfetto_verbose_logs_enabled=false: 禁用 Perfetto 详细日志
+# - rtc_build_json=false: 禁用 JSON 构建
+# - rtc_build_libsrtp=false: 禁用 libsrtp 构建
+# - rtc_build_libvpx=false: 禁用 libvpx 构建
+# - rtc_build_tools=false: 禁用工具构建
+# - rtc_enable_google_benchmarks=false: 禁用 Google 基准测试
+# - rtc_libvpx_build_vp9=false: 禁用 VP9 构建
+# - use_ghash=false: 禁用 ghash 功能
+# - rtc_build_ssl=false: 禁用 SSL 构建
+# - rtc_builtin_ssl_root_certificates=false: 禁用内置 SSL 根证书
+# - rtc_disable_logging=true: 禁用日志
+# - rtc_disable_metrics=true: 禁用指标
+# - rtc_disable_trace_events=true: 禁用跟踪事件
 
-GN_ARGS_ARM64='target_os="android" target_cpu="arm64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis="off"'
+GN_ARGS_ARM64='target_os="android" target_cpu="arm64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true'
 
-GN_ARGS_X64='target_os="android" target_cpu="x64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_pgo=false enable_remoting=false enable_widevine=false android_static_analysis="off"'
+GN_ARGS_X64='target_os="android" target_cpu="x64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true'
 
 ################################################################################
 # 颜色输出函数
