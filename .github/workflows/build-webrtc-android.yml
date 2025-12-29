@@ -280,8 +280,8 @@ jobs:
           # 复制文档模板
           cp docs/ANDROID_INSTALL_GUIDE.md ${{ env.OUTPUT_DIR }}/ANDROID_INSTALL_GUIDE.md
           
-          # 替换模板变量
-          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          # 替换模板变量（使用东八区时间）
+          BUILD_TIME=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S CST")
           sed -i "s|{{WEBRTC_BRANCH}}|${{ env.WEBRTC_BRANCH }}|g" ${{ env.OUTPUT_DIR }}/ANDROID_INSTALL_GUIDE.md
           sed -i "s|{{BUILD_TIME}}|${BUILD_TIME}|g" ${{ env.OUTPUT_DIR }}/ANDROID_INSTALL_GUIDE.md
           sed -i "s|{{RUN_NUMBER}}|${{ github.run_number }}|g" ${{ env.OUTPUT_DIR }}/ANDROID_INSTALL_GUIDE.md
