@@ -35,14 +35,6 @@ jobs:
           SAFE_BRANCH=$(echo "${{ env.WEBRTC_BRANCH }}" | sed 's/\//-/g')
           echo "WEBRTC_BRANCH_SAFE=$SAFE_BRANCH" >> $GITHUB_ENV
           
-      - name: 缓存 depot_tools
-        uses: actions/cache@v4
-        with:
-          path: ~/depot_tools
-          key: depot-tools-${{ env.DEPOT_TOOLS_VERSION }}
-          restore-keys: |
-            depot-tools-
-          
       - name: 安装依赖
         run: |
           sudo apt-get update
@@ -78,18 +70,6 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
-      - name: 缓存 WebRTC 源码
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.WEBRTC_SRC_DIR }}/src
-            ${{ env.WEBRTC_SRC_DIR }}/.gclient
-            ${{ env.WEBRTC_SRC_DIR }}/.gclient_entries
-          key: webrtc-src-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/.gclient') }}
-          restore-keys: |
-            webrtc-src-${{ env.WEBRTC_BRANCH_SAFE }}-
-            webrtc-src-
-            
       - name: 同步 WebRTC 源码
         run: |
           echo "开始同步 WebRTC 源码 (分支: ${{ env.WEBRTC_BRANCH }})..."
@@ -149,15 +129,6 @@ jobs:
           
           echo "WebRTC 源码同步完成"
           
-      - name: 缓存编译产物 (arm64)
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64
-          key: webrtc-build-arm64-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
-          restore-keys: |
-            webrtc-build-arm64-${{ env.WEBRTC_BRANCH_SAFE }}-
-            webrtc-build-arm64-
-            
       - name: 编译 arm64-v8a 架构
         run: |
           echo "开始编译 arm64-v8a 架构..."
@@ -168,14 +139,18 @@ jobs:
           # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
           # 添加优化参数以减少编译产物大小和磁盘使用
           # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          gn gen out/android_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true"
+          # 保留必要的日志和指标功能以确保Java代码正常生成
+          gn gen out/android_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false"
           
           # 列出所有可用的 GN 参数（用于后续优化）
           echo "列出所有可用的 GN 参数..."
           gn args --list out/android_arm64
           
-          # 编译
+          # 编译 libwebrtc 和 Java 绑定
           ninja -C out/android_arm64 libwebrtc
+          
+          # 编译 Java 绑定
+          ninja -C out/android_arm64 libwebrtc_java
           
       - name: 清理磁盘空间
         run: |
@@ -191,15 +166,6 @@ jobs:
           # 显示磁盘使用情况
           df -h
           
-      - name: 缓存编译产物 (x64)
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64
-          key: webrtc-build-x64-${{ env.WEBRTC_BRANCH_SAFE }}-${{ hashFiles('**/*.gn', '**/*.gni') }}
-          restore-keys: |
-            webrtc-build-x64-${{ env.WEBRTC_BRANCH_SAFE }}-
-            webrtc-build-x64-
-            
       - name: 编译 x86_64 架构
         run: |
           echo "开始编译 x86_64 架构..."
@@ -209,7 +175,8 @@ jobs:
           # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
           # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
           # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          gn gen out/android_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true"
+          # 保留必要的日志和指标功能以确保Java代码正常生成
+          gn gen out/android_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false"
           
           # 列出所有可用的 GN 参数（用于后续优化）
           echo "列出所有可用的 GN 参数..."
@@ -218,33 +185,64 @@ jobs:
           # 编译
           ninja -C out/android_x64 libwebrtc
           
+          # 编译 Java 绑定
+          ninja -C out/android_x64 libwebrtc_java
+          
       - name: 收集编译产物
         run: |
           echo "收集编译产物..."
           mkdir -p ${{ env.OUTPUT_DIR }}/{arm64,x64,universal}
           
+          # 查找 arm64 AAR 文件
+          echo "查找 arm64 AAR 文件..."
+          find ${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64 -name "*.aar" -type f 2>/dev/null || echo "未找到 arm64 AAR 文件"
+          
           # 复制 arm64 AAR
-          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc.aar" \
+               "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
+            echo "arm64 AAR 已复制 (路径1)"
+          elif [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
             cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
                "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
+            echo "arm64 AAR 已复制 (路径2)"
+          else
+            echo "警告: 未找到 arm64 AAR 文件"
           fi
           
+          # 查找 x64 AAR 文件
+          echo "查找 x64 AAR 文件..."
+          find ${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64 -name "*.aar" -type f 2>/dev/null || echo "未找到 x64 AAR 文件"
+          
           # 复制 x64 AAR
-          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc.aar" \
+               "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
+            echo "x64 AAR 已复制 (路径1)"
+          elif [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
             cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
                "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
+            echo "x64 AAR 已复制 (路径2)"
+          else
+            echo "警告: 未找到 x64 AAR 文件"
           fi
           
           # 复制 arm64 静态库
           if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/obj/libwebrtc.a" ]; then
             cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/obj/libwebrtc.a" \
                "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.a"
+            echo "arm64 静态库已复制"
+          else
+            echo "警告: 未找到 arm64 静态库"
           fi
           
           # 复制 x64 静态库
           if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/obj/libwebrtc.a" ]; then
             cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/obj/libwebrtc.a" \
                "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.a"
+            echo "x64 静态库已复制"
+          else
+            echo "警告: 未找到 x64 静态库"
           fi
           
           # 创建通用 AAR (合并多架构)
@@ -256,7 +254,11 @@ jobs:
             mkdir -p $TEMP_DIR/arm64
             cd $TEMP_DIR/arm64
             unzip -q "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
+            echo "arm64 AAR 解压内容:"
+            ls -la
             cd -
+          else
+            echo "警告: arm64 AAR 不存在，跳过解压"
           fi
           
           # 解压 x64 AAR
@@ -264,24 +266,35 @@ jobs:
             mkdir -p $TEMP_DIR/x64
             cd $TEMP_DIR/x64
             unzip -q "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
+            echo "x64 AAR 解压内容:"
+            ls -la
             cd -
+          else
+            echo "警告: x64 AAR 不存在，跳过解压"
           fi
           
           # 合并 JNI 库
           mkdir -p $TEMP_DIR/universal/jni
           if [ -d "$TEMP_DIR/arm64/jni" ]; then
             cp -r $TEMP_DIR/arm64/jni/* $TEMP_DIR/universal/jni/
+            echo "已复制 arm64 JNI 库"
+            ls -la $TEMP_DIR/universal/jni/
           fi
           if [ -d "$TEMP_DIR/x64/jni" ]; then
             cp -r $TEMP_DIR/x64/jni/* $TEMP_DIR/universal/jni/
+            echo "已复制 x64 JNI 库"
+            ls -la $TEMP_DIR/universal/jni/
           fi
           
           # 复制其他必要文件
           if [ -d "$TEMP_DIR/arm64" ]; then
             find $TEMP_DIR/arm64 -maxdepth 1 -type f -exec cp {} $TEMP_DIR/universal/ \;
+            echo "已复制 arm64 其他文件"
           fi
           
           # 打包通用 AAR
+          echo "通用 AAR 目录内容:"
+          ls -la $TEMP_DIR/universal/
           cd $TEMP_DIR/universal
           zip -q -r "${{ env.OUTPUT_DIR }}/universal/libwebrtc_universal.aar" *
           cd -
@@ -290,16 +303,17 @@ jobs:
           
           # 列出输出文件
           echo "编译产物列表:"
-          find ${{ env.OUTPUT_DIR }} -type f -name "*.aar" -o -name "*.a" | while read file; do
+          find ${{ env.OUTPUT_DIR }} -type f \( -name "*.aar" -o -name "*.a" \) | while read file; do
             echo "  $(basename $file) - $(du -h $file | cut -f1)"
           done
           
       - name: 创建版本信息文件
         run: |
-          cat > ${{ env.OUTPUT_DIR }}/version_info.txt << 'EOF'
+          BUILD_TIME=$(TZ='Asia/Shanghai' date +"%Y-%m-%d %H:%M:%S CST")
+          cat > ${{ env.OUTPUT_DIR }}/version_info.txt << EOF
           WebRTC Android 编译信息
           ========================
-          编译时间: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          编译时间: $BUILD_TIME
           WebRTC 分支: ${{ env.WEBRTC_BRANCH }}
           GitHub Actions Run: ${{ github.run_number }}
           Commit: ${{ github.sha }}
@@ -344,11 +358,20 @@ jobs:
           if [ -d "$JAVA_SRC_DIR" ]; then
             echo "找到 Java 源代码目录: $JAVA_SRC_DIR"
             
-            # 收集所有 Java 源文件
-            JAVA_FILES=$(find $JAVA_SRC_DIR -name "*.java" | grep -E "(AudioProcessing|EchoCancellation|NoiseSuppression|VoiceDetection)" | head -100)
+            # 列出Java目录结构
+            echo "Java 目录结构:"
+            find $JAVA_SRC_DIR -type d | head -20
+            
+            # 收集所有 Java 源文件（放宽过滤条件）
+            echo "查找所有 Java 源文件..."
+            JAVA_FILES=$(find $JAVA_SRC_DIR -name "*.java" 2>/dev/null | head -200)
             
             if [ -n "$JAVA_FILES" ]; then
               echo "找到 $(echo "$JAVA_FILES" | wc -l) 个 Java 文件"
+              
+              # 显示找到的文件列表（前20个）
+              echo "Java 文件列表（前20个）:"
+              echo "$JAVA_FILES" | head -20
               
               # 生成 JavaDoc
               javadoc -d $JAVADOC_DIR \
@@ -367,23 +390,61 @@ jobs:
                 -link https://developer.android.com/reference \
                 $JAVA_FILES 2>&1 || echo "JavaDoc 生成完成（可能有警告）"
               
-              # 创建 JavaDoc 索引文件
-              echo "JavaDoc 生成完成"
-              ls -la $JAVADOC_DIR | head -20
+              # 检查JavaDoc是否成功生成
+              if [ -f "$JAVADOC_DIR/index.html" ]; then
+                echo "JavaDoc 生成成功"
+                ls -la $JAVADOC_DIR | head -20
+                
+                # 打包 JavaDoc
+                cd $JAVADOC_DIR
+                zip -q -r "${{ env.OUTPUT_DIR }}/javadoc.zip" *
+                cd -
+                
+                echo "JavaDoc 已打包到: ${{ env.OUTPUT_DIR }}/javadoc.zip"
+              else
+                echo "警告: JavaDoc 生成失败，未找到 index.html"
+                # 创建一个简单的说明文件
+                cat > $JAVADOC_DIR/README.txt << EOF
+                JavaDoc 生成失败
+                
+                可能的原因：
+                1. Java 源文件路径不正确
+                2. JavaDoc 工具配置问题
+                3. 源代码结构变化
+                
+                请检查编译日志以获取更多信息。
+                EOF
+                cd $JAVADOC_DIR
+                zip -q -r "${{ env.OUTPUT_DIR }}/javadoc.zip" *
+                cd -
+              fi
+            else
+              echo "未找到任何 Java 源文件"
+              # 创建一个说明文件
+              cat > $JAVADOC_DIR/README.txt << EOF
+              未找到 Java 源文件
               
-              # 打包 JavaDoc
+              Java 源代码目录: $JAVA_SRC_DIR
+              
+              请检查 WebRTC 源代码是否正确同步。
+              EOF
               cd $JAVADOC_DIR
               zip -q -r "${{ env.OUTPUT_DIR }}/javadoc.zip" *
               cd -
-              
-              echo "JavaDoc 已打包到: ${{ env.OUTPUT_DIR }}/javadoc.zip"
-            else
-              echo "未找到相关的 Java 源文件"
-              echo "JavaDoc 跳过"
             fi
           else
             echo "Java 源代码目录不存在: $JAVA_SRC_DIR"
-            echo "JavaDoc 跳过"
+            # 创建一个说明文件
+            cat > $JAVADOC_DIR/README.txt << EOF
+            Java 源代码目录不存在
+            
+            预期路径: $JAVA_SRC_DIR
+            
+            请检查 WebRTC 源代码是否正确同步。
+            EOF
+            cd $JAVADOC_DIR
+            zip -q -r "${{ env.OUTPUT_DIR }}/javadoc.zip" *
+            cd -
           fi
           
       - name: 上传编译产物
@@ -394,7 +455,7 @@ jobs:
           retention-days: 90
           
       - name: 创建 Release
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: webrtc-android-${{ env.WEBRTC_BRANCH_SAFE }}-${{ github.run_number }}
@@ -460,7 +521,7 @@ jobs:
           sudo apt-get install -y maven
           
       - name: 发布到 GitHub Packages
-        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch'
         run: |
           echo "发布到 GitHub Packages..."
           
