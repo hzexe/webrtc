@@ -134,59 +134,29 @@ jobs:
           echo "开始编译 arm64-v8a 架构..."
           cd ${{ env.WEBRTC_SRC_DIR }}/src
           
-          # 生成构建配置
-          # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
-          # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
-          # 添加优化参数以减少编译产物大小和磁盘使用
-          # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          # 保留必要的日志和指标功能以确保Java代码正常生成
-          gn gen out/android_arm64 --args="target_os=\"android\" target_cpu=\"arm64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false"
+          # 使用官方 build_aar.py 脚本编译
+          # 注意：build_aar.py 会自动处理GN配置和ninja编译
+          # 使用 --extra-gn-args 参数来移除视频和P2P功能
+          python3 tools_webrtc/android/build_aar.py \
+            --output "libwebrtc_arm64.aar" \
+            --arch "arm64-v8a" \
+            --extra-gn-args "is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true rtc_enable_android_aaudio=true rtc_enable_libvpx=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_event_tracing=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 android_static_analysis=off enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false"
           
-          # 列出所有可用的 GN 参数（用于后续优化）
-          echo "列出所有可用的 GN 参数..."
-          gn args --list out/android_arm64
-          
-          # 编译 libwebrtc 和 Java 绑定
-          ninja -C out/android_arm64 libwebrtc
-          
-          # 编译 Java 绑定
-          ninja -C out/android_arm64 libwebrtc_java
-          
-      - name: 清理磁盘空间
-        run: |
-          echo "清理磁盘空间..."
-          # 清理 apt 缓存
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          
-          # 清理不必要的文件
-          rm -rf ~/.cache
-          rm -rf ~/.npm
-          
-          # 显示磁盘使用情况
-          df -h
+          echo "arm64-v8a 编译完成"
           
       - name: 编译 x86_64 架构
         run: |
           echo "开始编译 x86_64 架构..."
           cd ${{ env.WEBRTC_SRC_DIR }}/src
           
-          # 生成构建配置
-          # 注意：以下参数确保包含 AEC、NS、VAD 等音频处理功能
-          # 仅排除测试、示例代码、视频编解码器和 P2P 网络功能，保留核心音频功能
-          # 禁用 Android 静态分析以避免 AUTONINJA_BUILD_ID 错误
-          # 保留必要的日志和指标功能以确保Java代码正常生成
-          gn gen out/android_x64 --args="target_os=\"android\" target_cpu=\"x64\" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis=\"off\" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false"
+          # 使用官方 build_aar.py 脚本编译
+          # 使用 --extra-gn-args 参数来移除视频和P2P功能
+          python3 tools_webrtc/android/build_aar.py \
+            --output "libwebrtc_x64.aar" \
+            --arch "x86_64" \
+            --extra-gn-args "is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true rtc_enable_android_aaudio=true rtc_enable_libvpx=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_event_tracing=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 android_static_analysis=off enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false"
           
-          # 列出所有可用的 GN 参数（用于后续优化）
-          echo "列出所有可用的 GN 参数..."
-          gn args --list out/android_x64
-          
-          # 编译
-          ninja -C out/android_x64 libwebrtc
-          
-          # 编译 Java 绑定
-          ninja -C out/android_x64 libwebrtc_java
+          echo "x86_64 编译完成"
           
       - name: 收集编译产物
         run: |
@@ -195,34 +165,34 @@ jobs:
           
           # 查找 arm64 AAR 文件
           echo "查找 arm64 AAR 文件..."
-          find ${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64 -name "*.aar" -type f 2>/dev/null || echo "未找到 arm64 AAR 文件"
+          find ${{ env.WEBRTC_SRC_DIR }}/src -name "libwebrtc_arm64.aar" -type f 2>/dev/null || echo "未找到 arm64 AAR 文件"
           
-          # 复制 arm64 AAR
-          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc.aar" ]; then
-            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc.aar" \
+          # 复制 arm64 AAR（build_aar.py 输出在 src 目录下）
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/libwebrtc_arm64.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/libwebrtc_arm64.aar" \
                "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
-            echo "arm64 AAR 已复制 (路径1)"
-          elif [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
-            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
-               "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar"
-            echo "arm64 AAR 已复制 (路径2)"
+            echo "arm64 AAR 已复制"
+            
+            # 解压检查内容
+            echo "arm64 AAR 内容:"
+            unzip -l "${{ env.OUTPUT_DIR }}/arm64/libwebrtc_arm64.aar" | head -20
           else
             echo "警告: 未找到 arm64 AAR 文件"
           fi
           
           # 查找 x64 AAR 文件
           echo "查找 x64 AAR 文件..."
-          find ${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64 -name "*.aar" -type f 2>/dev/null || echo "未找到 x64 AAR 文件"
+          find ${{ env.WEBRTC_SRC_DIR }}/src -name "libwebrtc_x64.aar" -type f 2>/dev/null || echo "未找到 x64 AAR 文件"
           
           # 复制 x64 AAR
-          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc.aar" ]; then
-            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc.aar" \
+          if [ -f "${{ env.WEBRTC_SRC_DIR }}/src/libwebrtc_x64.aar" ]; then
+            cp "${{ env.WEBRTC_SRC_DIR }}/src/libwebrtc_x64.aar" \
                "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
-            echo "x64 AAR 已复制 (路径1)"
-          elif [ -f "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
-            cp "${{ env.WEBRTC_SRC_DIR }}/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
-               "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar"
-            echo "x64 AAR 已复制 (路径2)"
+            echo "x64 AAR 已复制"
+            
+            # 解压检查内容
+            echo "x64 AAR 内容:"
+            unzip -l "${{ env.OUTPUT_DIR }}/x64/libwebrtc_x64.aar" | head -20
           else
             echo "警告: 未找到 x64 AAR 文件"
           fi

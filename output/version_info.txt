@@ -1,0 +1,25 @@
+WebRTC Android 编译信息
+=======================
+编译时间: 2025-12-30 05:21:03 UTC
+WebRTC 分支: branch-heads/7605
+编译主机: win11
+用户: hzexe
+
+包含功能:
+- 回声消除 (AEC)
+- 降噪 (NS)
+- 语音活动检测 (VAD)
+
+已移除功能:
+- 视频编解码器 (VP8, VP9, H.264, AV1)
+- P2P 网络功能 (PeerConnection, DataChannel, SCTP)
+
+支持架构:
+- arm64-v8a
+- x86_64
+
+编译参数:
+- is_debug=false (Release 模式)
+- is_component_build=false (静态链接)
+- use_rtti=false (禁用 RTTI)
+- use_exceptions=false (禁用异常)

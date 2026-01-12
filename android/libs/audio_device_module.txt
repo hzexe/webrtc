@@ -1,0 +1,20 @@
+Compiled from "AudioDeviceModule.java"
+public interface org.webrtc.audio.AudioDeviceModule {
+  public abstract long getNative(long);
+
+  public abstract void release();
+
+  public abstract void setSpeakerMute(boolean);
+
+  public abstract void setMicrophoneMute(boolean);
+
+  public default boolean setNoiseSuppressorEnabled(boolean);
+    Code:
+       0: iconst_0
+       1: ireturn
+
+  public default boolean setPreferredMicrophoneFieldDimension(float);
+    Code:
+       0: iconst_0
+       1: ireturn
+}

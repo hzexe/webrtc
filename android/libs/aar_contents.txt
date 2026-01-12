@@ -1,0 +1,3 @@
+AndroidManifest.xml
+classes.jar
+jni/arm64-v8a/libjingle_peerconnection_so.so

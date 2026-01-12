@@ -81,16 +81,13 @@ ARCHITECTURES=("arm64" "x64")
 # - rtc_build_examples=false: 不包含示例代码
 # - rtc_enable_protobuf=true: 启用 Protobuf 支持
 # - use_custom_libcxx=true: 使用自定义 libc++
-# - treat_warnings_as_errors=false: 警告不视为错误
-# - rtc_enable_android_opensl=true: 启用 Android OpenSL ES 音频
 # - rtc_enable_android_aaudio=true: 启用 Android AAudio 音频
 # - rtc_enable_libaom=false: 禁用 AV1 视频编解码器
 # - rtc_enable_libvpx=false: 禁用 VP8/VP9 视频编解码器
 # - rtc_enable_h264=false: 禁用 H.264 视频编解码器
 # - rtc_enable_vp8=false: 禁用 VP8 视频编解码器
 # - rtc_enable_vp9=false: 禁用 VP9 视频编解码器
-# - rtc_enable_av1=false: 禁用 AV1 视频编解码器
-# - rtc_enable_bwe_test_logging=false: 禁用带宽估计测试日志
+
 # - rtc_enable_event_tracing=false: 禁用事件跟踪
 # - rtc_enable_peerconnection=false: 禁用 PeerConnection（P2P）
 # - rtc_enable_datachannel=false: 禁用数据通道
@@ -99,8 +96,6 @@ ARCHITECTURES=("arm64" "x64")
 # - use_rtti=false: 禁用 RTTI（减少二进制大小）
 # - use_exceptions=false: 禁用异常（减少二进制大小）
 # - symbol_level=0: 禁用调试符号（减小体积）
-# - enable_remoting=false: 禁用远程桌面
-# - enable_widevine=false: 禁用 Widevine DRM
 # - android_static_analysis="off": 禁用 Android 静态分析（避免 AUTONINJA_BUILD_ID 错误）
 # - enable_stripping=true: 启用符号剥离以减小二进制大小
 # - rtc_video_psnr=false: 禁用视频 PSNR 计算（已禁用视频编解码器）
@@ -111,7 +106,6 @@ ARCHITECTURES=("arm64" "x64")
 # - libyuv_include_tests=false: 禁用 libyuv 测试
 # - libyuv_use_absl_flags=false: 禁用 libyuv 的 absl flags
 # - perfetto_verbose_logs_enabled=false: 禁用 Perfetto 详细日志
-# - rtc_build_json=false: 禁用 JSON 构建
 # - rtc_build_libsrtp=false: 禁用 libsrtp 构建
 # - rtc_build_libvpx=false: 禁用 libvpx 构建
 # - rtc_build_tools=false: 禁用工具构建
@@ -124,9 +118,9 @@ ARCHITECTURES=("arm64" "x64")
 # - rtc_disable_metrics=true: 禁用指标
 # - rtc_disable_trace_events=true: 禁用跟踪事件
 
-GN_ARGS_ARM64='target_os="android" target_cpu="arm64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true'
+GN_ARGS_ARM64='is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true rtc_enable_android_aaudio=true rtc_include_builtin_audio_codecs=true use_rtti=false symbol_level=0 android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false'
 
-GN_ARGS_X64='target_os="android" target_cpu="x64" is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true treat_warnings_as_errors=false rtc_enable_android_opensl=true rtc_enable_android_aaudio=true rtc_enable_libaom=false rtc_enable_libvpx=false rtc_enable_h264=false rtc_enable_vp8=false rtc_enable_vp9=false rtc_enable_av1=false rtc_enable_bwe_test_logging=false rtc_enable_event_tracing=false rtc_enable_peerconnection=false rtc_enable_datachannel=false rtc_enable_sctp=false rtc_include_builtin_audio_codecs=true use_rtti=false use_exceptions=false symbol_level=0 enable_remoting=false enable_widevine=false android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_json=false rtc_build_libsrtp=false rtc_build_libvpx=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false rtc_build_ssl=false rtc_builtin_ssl_root_certificates=false rtc_disable_logging=true rtc_disable_metrics=true rtc_disable_trace_events=true'
+GN_ARGS_X64='is_debug=false is_component_build=false rtc_include_tests=false rtc_build_examples=false rtc_enable_protobuf=true use_custom_libcxx=true rtc_enable_android_aaudio=true rtc_include_builtin_audio_codecs=true use_rtti=false symbol_level=0 android_static_analysis="off" enable_stripping=true rtc_video_psnr=false enable_rust_cxx=false enable_rust=false libyuv_disable_jpeg=true libyuv_disable_rvv=true libyuv_include_tests=false libyuv_use_absl_flags=false perfetto_verbose_logs_enabled=false rtc_build_tools=false rtc_enable_google_benchmarks=false rtc_libvpx_build_vp9=false use_ghash=false'
 
 ################################################################################
 # 颜色输出函数
@@ -283,54 +277,92 @@ sync_webrtc_source() {
     print_header "同步 WebRTC 源码"
     
     if [ -d "$WEBRTC_SRC_DIR/src" ]; then
-        print_info "WebRTC 源码已存在，跳过下载"
-        print_info "如需重新下载，请删除目录: $WEBRTC_SRC_DIR"
-        return
-    fi
-    
-    print_info "开始同步 WebRTC 源码 (分支: $WEBRTC_BRANCH)..."
-    print_warning "这可能需要较长时间（取决于网络速度）"
-    
-    # 创建工作目录
-    mkdir -p "$WEBRTC_SRC_DIR"
-    cd "$WEBRTC_SRC_DIR"
-    
-    # 初始化 depot_tools
-    print_info "执行 fetch webrtc_android..."
-    fetch --nohooks webrtc_android
-    
-    # 切换到指定分支
-    print_info "切换到分支 $WEBRTC_BRANCH..."
-    cd src
-    git fetch origin
-    
-    # 尝试检出分支（按优先级尝试不同的分支格式）
-    BRANCH_FOUND=false
-    
-    # 1. 尝试里程碑分支格式：branch-heads/7605
-    if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/branch-heads/$WEBRTC_BRANCH" 2>/dev/null; then
-        print_success "成功切换到分支 branch-heads/$WEBRTC_BRANCH"
-        BRANCH_FOUND=true
-    fi
-    
-    # 2. 尝试 origin 前缀格式：origin/main
-    if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/$WEBRTC_BRANCH" 2>/dev/null; then
-        print_success "成功切换到分支 origin/$WEBRTC_BRANCH"
-        BRANCH_FOUND=true
-    fi
-    
-    # 3. 尝试本地分支
-    if ! $BRANCH_FOUND && git checkout "$WEBRTC_BRANCH" 2>/dev/null; then
-        print_success "成功切换到本地分支 $WEBRTC_BRANCH"
-        BRANCH_FOUND=true
-    fi
-    
-    # 如果所有尝试都失败
-    if ! $BRANCH_FOUND; then
-        print_error "无法切换到分支 $WEBRTC_BRANCH"
-        print_info "可用的分支:"
-        git branch -r | grep -v HEAD
-        exit 1
+        print_info "WebRTC 源码已存在"
+        cd "$WEBRTC_SRC_DIR/src"
+        
+        # 检查当前分支是否与目标分支匹配
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD | sed 's/origin\///' | sed 's/branch-heads\///')
+        if [ "$CURRENT_BRANCH" = "$WEBRTC_BRANCH" ] || [ "branch-heads/$CURRENT_BRANCH" = "$WEBRTC_BRANCH" ]; then
+            print_info "当前分支已匹配目标分支: $CURRENT_BRANCH"
+        else
+            print_info "当前分支: $CURRENT_BRANCH, 目标分支: $WEBRTC_BRANCH"
+            print_info "切换到目标分支..."
+            
+            # 尝试检出分支（按优先级尝试不同的分支格式）
+            BRANCH_FOUND=false
+            
+            # 1. 尝试里程碑分支格式：branch-heads/7605
+            git fetch origin
+            if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/branch-heads/$WEBRTC_BRANCH" 2>/dev/null; then
+                print_success "成功切换到分支 branch-heads/$WEBRTC_BRANCH"
+                BRANCH_FOUND=true
+            fi
+            
+            # 2. 尝试 origin 前缀格式：origin/main
+            if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/$WEBRTC_BRANCH" 2>/dev/null; then
+                print_success "成功切换到分支 origin/$WEBRTC_BRANCH"
+                BRANCH_FOUND=true
+            fi
+            
+            # 3. 尝试本地分支
+            if ! $BRANCH_FOUND && git checkout "$WEBRTC_BRANCH" 2>/dev/null; then
+                print_success "成功切换到本地分支 $WEBRTC_BRANCH"
+                BRANCH_FOUND=true
+            fi
+            
+            # 如果所有尝试都失败
+            if ! $BRANCH_FOUND; then
+                print_error "无法切换到分支 $WEBRTC_BRANCH"
+                print_info "可用的分支:"
+                git branch -r | grep -v HEAD
+                exit 1
+            fi
+        fi
+    else
+        print_info "开始同步 WebRTC 源码 (分支: $WEBRTC_BRANCH)..."
+        print_warning "这可能需要较长时间（取决于网络速度）"
+        
+        # 创建工作目录
+        mkdir -p "$WEBRTC_SRC_DIR"
+        cd "$WEBRTC_SRC_DIR"
+        
+        # 初始化 depot_tools
+        print_info "执行 fetch webrtc_android..."
+        fetch --nohooks webrtc_android
+        
+        # 切换到指定分支
+        print_info "切换到分支 $WEBRTC_BRANCH..."
+        cd src
+        git fetch origin
+        
+        # 尝试检出分支（按优先级尝试不同的分支格式）
+        BRANCH_FOUND=false
+        
+        # 1. 尝试里程碑分支格式：branch-heads/7605
+        if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/branch-heads/$WEBRTC_BRANCH" 2>/dev/null; then
+            print_success "成功切换到分支 branch-heads/$WEBRTC_BRANCH"
+            BRANCH_FOUND=true
+        fi
+        
+        # 2. 尝试 origin 前缀格式：origin/main
+        if ! $BRANCH_FOUND && git checkout -b "$WEBRTC_BRANCH" "origin/$WEBRTC_BRANCH" 2>/dev/null; then
+            print_success "成功切换到分支 origin/$WEBRTC_BRANCH"
+            BRANCH_FOUND=true
+        fi
+        
+        # 3. 尝试本地分支
+        if ! $BRANCH_FOUND && git checkout "$WEBRTC_BRANCH" 2>/dev/null; then
+            print_success "成功切换到本地分支 $WEBRTC_BRANCH"
+            BRANCH_FOUND=true
+        fi
+        
+        # 如果所有尝试都失败
+        if ! $BRANCH_FOUND; then
+            print_error "无法切换到分支 $WEBRTC_BRANCH"
+            print_info "可用的分支:"
+            git branch -r | grep -v HEAD
+            exit 1
+        fi
     fi
     
     # 运行 hooks
@@ -352,23 +384,26 @@ build_architecture() {
     
     cd "$WEBRTC_SRC_DIR/src"
     
-    # 生成构建配置
-    print_info "生成构建配置..."
-    gn gen "out/android_$arch" --args="$gn_args"
+    # 使用官方 build_aar.py 脚本编译
+    # 注意：build_aar.py 会自动处理GN配置和ninja编译
+    print_info "使用 build_aar.py 脚本编译..."
     
-    # 列出所有可用的 GN 参数（用于后续优化）
-    print_info "列出所有可用的 GN 参数..."
-    gn args --list "out/android_$arch"
-    
-    # 编译（使用多核优化）
-    print_info "开始编译（这可能需要较长时间，使用 $NINJA_JOBS 个并行任务）..."
-    if [ "$NINJA_JOBS" -eq 0 ]; then
-        print_info "使用所有可用的CPU核心进行编译"
-        ninja -C "out/android_$arch" libwebrtc
+    # 根据 arch 参数设置对应的架构名称
+    local arch_name=""
+    if [ "$arch" == "arm64" ]; then
+        arch_name="arm64-v8a"
+    elif [ "$arch" == "x64" ]; then
+        arch_name="x86_64"
     else
-        print_info "使用 $NINJA_JOBS 个CPU核心进行编译"
-        ninja -C "out/android_$arch" -j "$NINJA_JOBS" libwebrtc
+        print_error "不支持的架构: $arch"
+        exit 1
     fi
+    
+    # 使用 build_aar.py 编译
+    python3 tools_webrtc/android/build_aar.py \
+        --output "libwebrtc_${arch}.aar" \
+        --arch "$arch_name" \
+        --extra-gn-args "$gn_args"
     
     print_success "$arch 架构编译完成"
 }
@@ -383,40 +418,24 @@ collect_artifacts() {
     # 创建输出目录
     mkdir -p "$OUTPUT_DIR"/{arm64,x64,universal}
     
-    # 复制 arm64 AAR
-    if [ -f "$WEBRTC_SRC_DIR/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
-        cp "$WEBRTC_SRC_DIR/src/out/android_arm64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
+    # 复制 arm64 AAR（使用 build_aar.py 生成的新路径）
+    if [ -f "$WEBRTC_SRC_DIR/src/libwebrtc_arm64.aar" ]; then
+        cp "$WEBRTC_SRC_DIR/src/libwebrtc_arm64.aar" \
            "$OUTPUT_DIR/arm64/libwebrtc_arm64.aar"
         print_success "复制 arm64 AAR"
     else
         print_warning "未找到 arm64 AAR"
+        print_info "预期路径: $WEBRTC_SRC_DIR/src/libwebrtc_arm64.aar"
     fi
     
-    # 复制 x64 AAR
-    if [ -f "$WEBRTC_SRC_DIR/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" ]; then
-        cp "$WEBRTC_SRC_DIR/src/out/android_x64/lib.java/sdk/android/libwebrtc/libwebrtc.aar" \
+    # 复制 x64 AAR（使用 build_aar.py 生成的新路径）
+    if [ -f "$WEBRTC_SRC_DIR/src/libwebrtc_x64.aar" ]; then
+        cp "$WEBRTC_SRC_DIR/src/libwebrtc_x64.aar" \
            "$OUTPUT_DIR/x64/libwebrtc_x64.aar"
         print_success "复制 x64 AAR"
     else
         print_warning "未找到 x64 AAR"
-    fi
-    
-    # 复制 arm64 静态库
-    if [ -f "$WEBRTC_SRC_DIR/src/out/android_arm64/obj/libwebrtc.a" ]; then
-        cp "$WEBRTC_SRC_DIR/src/out/android_arm64/obj/libwebrtc.a" \
-           "$OUTPUT_DIR/arm64/libwebrtc_arm64.a"
-        print_success "复制 arm64 静态库"
-    else
-        print_warning "未找到 arm64 静态库"
-    fi
-    
-    # 复制 x64 静态库
-    if [ -f "$WEBRTC_SRC_DIR/src/out/android_x64/obj/libwebrtc.a" ]; then
-        cp "$WEBRTC_SRC_DIR/src/out/android_x64/obj/libwebrtc.a" \
-           "$OUTPUT_DIR/x64/libwebrtc_x64.a"
-        print_success "复制 x64 静态库"
-    else
-        print_warning "未找到 x64 静态库"
+        print_info "预期路径: $WEBRTC_SRC_DIR/src/libwebrtc_x64.aar"
     fi
     
     # 创建通用 AAR（合并多架构）

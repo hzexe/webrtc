@@ -41,8 +41,6 @@
 - 测试代码 (`rtc_include_tests = false`)
 - 示例代码 (`rtc_build_examples = false`)
 - 视频编解码器 (VP8, VP9, H.264, AV1)
-- P2P 网络功能 (PeerConnection, DataChannel, SCTP)
-- 测试日志 (`rtc_enable_bwe_test_logging = false`)
 - 事件追踪 (`rtc_enable_event_tracing = false`)
 
 保留所有核心音频处理功能，确保编译产物功能完整且体积更小。
