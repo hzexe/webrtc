@@ -12,7 +12,7 @@
 
     <name>DeepFilterNet Android</name>
     <description>DeepFilterNet 降噪引擎的 Android 集成库，基于 Tract 框架实现</description>
-    <url>https://github.com/your-username/webrtc</url>
+    <url>https://github.com/hzexe/webrtc</url>
 
     <licenses>
         <license>
@@ -32,9 +32,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/your-username/webrtc.git</connection>
-        <developerConnection>scm:git:ssh://github.com/your-username/webrtc.git</developerConnection>
-        <url>https://github.com/your-username/webrtc</url>
+        <connection>scm:git:git://github.com/hzexe/webrtc.git</connection>
+        <developerConnection>scm:git:ssh://github.com/hzexe/webrtc.git</developerConnection>
+        <url>https://github.com/hzexe/webrtc</url>
     </scm>
 
     <properties>
@@ -111,6 +111,13 @@
                     <show>private</show>
                     <nohelp>true</nohelp>
                     <doclint>none</doclint>
+                    <additionalJOptions>
+                        <additionalJOption>-J-Duser.language=en</additionalJOption>
+                    </additionalJOptions>
+                    <additionalOptions>
+                        <additionalOption>-source</additionalOption>
+                        <additionalOption>8</additionalOption>
+                    </additionalOptions>
                 </configuration>
             </plugin>
         </plugins>

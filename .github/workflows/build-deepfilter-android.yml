@@ -19,7 +19,6 @@ env:
   BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
   ANDROID_NDK_VERSION: '29.0.13113456'
   RUST_TARGET: 'aarch64-linux-android'
-  MIN_SDK_VERSION: '27'
 
 jobs:
   build-deepfilter:
@@ -181,16 +180,9 @@ jobs:
           # 创建源码 JAR
           jar cvf target/deepfilter-android-$VERSION-sources.jar -C src/main/java .
           
-          # 创建 Javadoc JAR
+          # 创建空的 Javadoc JAR（由于 Java 17 javadoc bug，暂时跳过）
           mkdir -p target/javadoc
-          javadoc -d target/javadoc \
-            -encoding UTF-8 \
-            -charset UTF-8 \
-            -docencoding UTF-8 \
-            -source 8 \
-            -sourcepath src/main/java \
-            -classpath "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
-            -subpackages com.webrtc.audio
+          echo "# Javadoc temporarily disabled due to Java 17 javadoc bug" > target/javadoc/README.md
           jar cvf target/deepfilter-android-$VERSION-javadoc.jar -C target/javadoc .
           
           echo "Maven 打包完成"
