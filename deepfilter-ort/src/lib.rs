@@ -169,8 +169,7 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
 
     // 获取输入数组的直接指针（避免复制）
     let input_ptr = unsafe {
-        let is_copy = std::ptr::null_mut();
-        env.get_byte_array_elements(input, is_copy)
+        env.get_array_elements(&input, jni::objects::ReleaseMode::NoCopyBack)
     };
 
     if input_ptr.is_err() {
@@ -182,13 +181,12 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
 
     // 获取输出数组的直接指针（避免复制）
     let output_ptr = unsafe {
-        let is_copy = std::ptr::null_mut();
-        env.get_byte_array_elements(output, is_copy)
+        env.get_array_elements(&output, jni::objects::ReleaseMode::NoCopyBack)
     };
 
     if output_ptr.is_err() {
         eprintln!("获取输出数组指针失败");
-        let _ = env.release_byte_array_elements(input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
+        let _ = env.release_array_elements(&input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
         return -1.0;
     }
 
@@ -244,8 +242,8 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
     }
 
     // 释放数组指针（保留修改）
-    let _ = env.release_byte_array_elements(input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
-    let _ = env.release_byte_array_elements(output, output_ptr, jni::objects::ReleaseMode::Commit);
+    let _ = env.release_array_elements(&input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
+    let _ = env.release_array_elements(&output, output_ptr, jni::objects::ReleaseMode::Commit);
 
     lsnr
 }
