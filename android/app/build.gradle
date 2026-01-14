@@ -2,6 +2,13 @@ plugins {
     id 'com.android.application'
 }
 
+// Rust 项目配置
+def rustProjectPath = '../../deepfilter-ort'
+def rustTarget = 'aarch64-linux-android'
+def rustOutputDir = "${rustProjectPath}/target/${rustTarget}/release"
+def rustLibName = 'libdeepfilter_ort.a'
+def jniLibDir = 'src/main/jni'
+
 android {
     namespace 'com.webrtc.audio.example'
     compileSdk 34
@@ -50,6 +57,71 @@ android {
         noCompress 'tgz'
     }
 }
+
+// 自定义任务：编译 Rust 代码
+task buildRustLib(type: Exec) {
+    description = '编译 Rust 静态库用于 Android'
+    group = 'build'
+    
+    workingDir rustProjectPath
+    
+    // 检查 Rust 是否已安装
+    doFirst {
+        try {
+            exec {
+                commandLine 'rustc', '--version'
+                ignoreExitValue = false
+            }
+        } catch (Exception e) {
+            throw new GradleException('Rust 未安装或不在 PATH 中。请先安装 Rust: https://rustup.rs/')
+        }
+    }
+    
+    // 执行 cargo build
+    commandLine 'cargo', 'build', '--release', '--target', rustTarget
+    
+    // 验证输出文件是否存在
+    doLast {
+        def rustLib = file("${rustOutputDir}/${rustLibName}")
+        if (!rustLib.exists()) {
+            throw new GradleException("Rust 库编译失败: ${rustLib} 不存在")
+        }
+        println "Rust 库编译成功: ${rustLib}"
+    }
+}
+
+// 自定义任务：复制 Rust 库到 jni 目录
+task copyRustLib(type: Copy, dependsOn: buildRustLib) {
+    description = '复制编译好的 Rust 静态库到 jni 目录'
+    group = 'build'
+    
+    from rustOutputDir
+    into jniLibDir
+    include rustLibName
+    
+    doLast {
+        println "Rust 库已复制到: ${jniLibDir}/${rustLibName}"
+    }
+}
+
+// 确保在构建 Android 之前先编译 Rust
+tasks.whenTaskAdded { task ->
+    if (task.name == 'externalNativeBuildDebug' || task.name == 'externalNativeBuildRelease') {
+        task.dependsOn copyRustLib
+    }
+}
+
+// 清理任务：删除 Rust 编译产物
+task cleanRust(type: Delete) {
+    description = '清理 Rust 编译产物'
+    group = 'build'
+    
+    delete file("${rustProjectPath}/target")
+    delete file("${jniLibDir}/${rustLibName}")
+}
+
+// 将 cleanRust 添加到 clean 任务依赖
+clean.dependsOn cleanRust
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
