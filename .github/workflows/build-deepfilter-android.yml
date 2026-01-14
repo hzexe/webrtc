@@ -19,6 +19,7 @@ env:
   BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
   ANDROID_NDK_VERSION: '29.0.13113456'
   RUST_TARGET: 'aarch64-linux-android'
+  MIN_SDK_VERSION: '27'
 
 jobs:
   build-deepfilter:
@@ -187,6 +188,8 @@ jobs:
             -charset UTF-8 \
             -docencoding UTF-8 \
             -sourcepath src/main/java \
+            -bootclasspath $ANDROID_SDK_ROOT/platforms/android-${{ env.MIN_SDK_VERSION }}/android.jar \
+            -classpath $ANDROID_SDK_ROOT/platforms/android-${{ env.MIN_SDK_VERSION }}/android.jar \
             -subpackages com.webrtc.audio
           jar cvf target/deepfilter-android-$VERSION-javadoc.jar -C target/javadoc .
           
