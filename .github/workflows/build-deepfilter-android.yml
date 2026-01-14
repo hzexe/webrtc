@@ -189,7 +189,7 @@ jobs:
             -docencoding UTF-8 \
             -source 8 \
             -sourcepath src/main/java \
-            -classpath $ANDROID_SDK_ROOT/platforms/android-${{ env.MIN_SDK_VERSION }}/android.jar \
+            -classpath "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
             -subpackages com.webrtc.audio
           jar cvf target/deepfilter-android-$VERSION-javadoc.jar -C target/javadoc .
           
