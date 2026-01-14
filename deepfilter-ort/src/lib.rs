@@ -4,8 +4,8 @@
 use std::io::Cursor;
 
 use jni::JNIEnv;
-use jni::objects::{JByteArray, JClass};
-use jni::sys::{jint, jlong};
+use jni::objects::JClass;
+use jni::sys::{jint, jlong, jbyteArray};
 use ndarray::prelude::*;
 
 use df::tract::{DfParams, DfTract, RuntimeParams, ReduceMask};
@@ -113,7 +113,7 @@ pub extern "C" fn df_process_frame(
 pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeCreate(
     env: JNIEnv,
     _class: JClass,
-    tar_bytes: JByteArray,
+    tar_bytes: jbyteArray,
     post_filter_beta: f32,
     atten_lim_db: f32,
 ) -> jlong {
@@ -155,10 +155,10 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
     env: JNIEnv,
     _class: JClass,
     state_ptr: jlong,
-    input: JByteArray,
+    input: jbyteArray,
     input_offset: jint,
     input_length: jint,
-    output: JByteArray,
+    output: jbyteArray,
     output_offset: jint,
     frame_size: jint,
 ) -> f32 {
@@ -167,26 +167,29 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
         return -1.0;
     }
 
-    // 获取输入数组的直接指针（避免复制）
-    let input_ptr = unsafe {
-        env.get_byte_array_elements(&input, 0)
+    // 获取输入数组的 AutoArray（自动管理内存）
+    // jni 0.20 API: get_byte_array_elements 返回 Result<AutoArray<i8>, Error>
+    // ReleaseMode::CopyBack 表示在 AutoArray 析构时复制回 Java 数组
+    let input_auto = match env.get_byte_array_elements(input, jni::objects::ReleaseMode::CopyBack) {
+        Ok(auto) => auto,
+        Err(e) => {
+            eprintln!("获取输入数组失败: {}", e);
+            return -1.0;
+        }
     };
 
-    if input_ptr.is_null() {
-        eprintln!("获取输入数组指针失败");
-        return -1.0;
-    }
-
-    // 获取输出数组的直接指针（避免复制）
-    let output_ptr = unsafe {
-        env.get_byte_array_elements(&output, 0)
+    // 获取输出数组的 AutoArray
+    let output_auto = match env.get_byte_array_elements(output, jni::objects::ReleaseMode::CopyBack) {
+        Ok(auto) => auto,
+        Err(e) => {
+            eprintln!("获取输出数组失败: {}", e);
+            return -1.0;
+        }
     };
 
-    if output_ptr.is_null() {
-        eprintln!("获取输出数组指针失败");
-        let _ = env.release_byte_array_elements(&input, input_ptr, 1);
-        return -1.0;
-    }
+    // 获取原始指针
+    let input_ptr = input_auto.as_ptr();
+    let output_ptr = output_auto.as_ptr();
 
     // 直接在 Java 数组内存上进行字节到 f32 的转换
     let input_bytes = unsafe {
@@ -206,7 +209,13 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
         if i >= frame_size as usize {
             break;
         }
-        let bytes: [u8; 4] = [chunk[0], chunk[1], chunk[2], chunk[3]];
+        // 将 i8 转换为 u8
+        let bytes: [u8; 4] = [
+            chunk[0] as u8,
+            chunk[1] as u8,
+            chunk[2] as u8,
+            chunk[3] as u8,
+        ];
         input_f32[i] = f32::from_le_bytes(bytes);
     }
 
@@ -231,15 +240,15 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
 
     for (i, &val) in output_f32.iter().enumerate() {
         let bytes = val.to_le_bytes();
-        output_bytes[i * 4] = bytes[0];
-        output_bytes[i * 4 + 1] = bytes[1];
-        output_bytes[i * 4 + 2] = bytes[2];
-        output_bytes[i * 4 + 3] = bytes[3];
+        // 将 u8 转换为 i8
+        output_bytes[i * 4] = bytes[0] as i8;
+        output_bytes[i * 4 + 1] = bytes[1] as i8;
+        output_bytes[i * 4 + 2] = bytes[2] as i8;
+        output_bytes[i * 4 + 3] = bytes[3] as i8;
     }
 
-    // 释放数组指针（保留修改）
-    let _ = env.release_byte_array_elements(&input, input_ptr, 1);
-    let _ = env.release_byte_array_elements(&output, output_ptr, 0);
+    // AutoArray 在离开作用域时会自动释放并复制回 Java 数组
+    // 不需要手动调用 release_byte_array_elements
 
     lsnr
 }

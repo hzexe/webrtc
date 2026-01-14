@@ -7,8 +7,8 @@
 ## 工作原理
 
 1. **自动编译**：Gradle 在构建 Android 项目前自动执行 `cargo build`
-2. **自动复制**：编译好的 Rust 静态库自动复制到 jni 目录
-3. **自动链接**：ndk-build 自动链接 Rust 静态库
+2. **自动复制**：编译好的 Rust 动态库自动复制到 jniLibs 目录
+3. **自动打包**：Android 构建系统自动打包动态库到 APK
 
 ## 使用方法
 
@@ -22,9 +22,8 @@
 Gradle 会自动：
 1. 检查 Rust 是否已安装
 2. 编译 Rust 代码（`cargo build --release --target aarch64-linux-android`）
-3. 复制 `libdeepfilter_ort.a` 到 `src/main/jni/` 目录
-4. 执行 ndk-build 链接 Rust 库
-5. 构建 Android APK
+3. 复制 `libdeepfilter_ort.so` 到 `src/main/jniLibs/arm64-v8a/` 目录
+4. 构建 Android APK（自动打包动态库）
 
 ### 单独编译 Rust 库
 
@@ -43,7 +42,7 @@ Gradle 会自动：
 这会清理：
 - Android 构建产物
 - Rust 编译产物（`deepfilter-ort/target/`）
-- 复制的 Rust 静态库（`src/main/jni/libdeepfilter_ort.a`）
+- 复制的 Rust 动态库（`src/main/jniLibs/arm64-v8a/libdeepfilter_ort.so`）
 
 ## 配置说明
 
@@ -62,7 +61,7 @@ def rustTarget = 'aarch64-linux-android'      // 目标架构
 
 1. 修改 `app/build.gradle` 中的 `rustTarget`
 2. 修改 `app/build.gradle` 中的 `defaultConfig.ndk.abiFilters`
-3. 修改 `src/main/jni/Application.mk` 中的 `APP_ABI`
+3. 修改 `jniLibDir` 为对应的架构目录（如 `src/main/jniLibs/armeabi-v7a/`）
 
 ### Rust 版本要求
 
@@ -80,16 +79,63 @@ cargo build --release --target aarch64-linux-android
     ↓
 copyRustLib 任务
     ↓
-复制 libdeepfilter_ort.a → src/main/jni/
+复制 libdeepfilter_ort.so → src/main/jniLibs/arm64-v8a/
     ↓
-externalNativeBuildDebug 任务
+preDebugBuild 任务
     ↓
-ndk-build 链接 Rust 静态库
+Android 构建系统打包动态库
     ↓
 生成 APK
 ```
 
 ## 故障排查
+
+### Windows 环境缺少 Clang 编译器
+
+**错误信息**：
+```
+cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "aarch64-linux-android-clang": program not found
+error occurred in cc-rs: failed to find tool "clang.exe": program not found
+```
+
+**原因**：在 Windows 上编译 Rust 时，某些依赖（如 tract-linalg）需要使用 C 编译器（clang）来编译 C 代码。cc-rs 在 Windows 上默认查找 Windows 的 clang.exe，而不是 Android NDK 的 clang。
+
+**解决方法**（选择一种）：
+
+#### 方法 1：安装 LLVM/Clang for Windows（推荐）
+
+1. 下载 [LLVM for Windows](https://releases.llvm.org/download.html)
+2. 安装 LLVM（包含 clang.exe）
+3. 确保 clang.exe 在 PATH 中
+
+#### 方法 2：配置环境变量指向 Android NDK 的 clang
+
+在 PowerShell 中设置环境变量：
+
+```powershell
+$env:CC = "C:\androidsdk\ndk\29.0.13113456\toolchains\llvm\prebuilt\windows-x86_64\bin\aarch64-linux-android29-clang.cmd"
+$env:CXX = "C:\androidsdk\ndk\29.0.13113456\toolchains\llvm\prebuilt\windows-x86_64\bin\aarch64-linux-android29-clang++.cmd"
+```
+
+或者在 `deepfilter-ort/.cargo/config.toml` 中添加：
+
+```toml
+[env]
+CC = { value = "C:\\androidsdk\\ndk\\29.0.13113456\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\aarch64-linux-android29-clang.cmd", relative = false }
+CXX = { value = "C:\\androidsdk\\ndk\\29.0.13113456\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\aarch64-linux-android29-clang++.cmd", relative = false }
+```
+
+#### 方法 3：使用 WSL 或 Linux 环境（最简单）
+
+在 WSL（Windows Subsystem for Linux）中编译：
+
+```bash
+# 在 WSL 中
+cd /mnt/f/webrtc/android
+./gradlew buildRustLib
+```
+
+**推荐使用方法 3**，因为 Linux 环境下的编译工具链配置更加简单和稳定。
 
 ### Windows 环境缺少 MSVC 链接器
 
@@ -127,6 +173,8 @@ cd /mnt/f/webrtc/android
 ./gradlew buildRustLib
 ```
 
+**注意**：如果同时遇到 Clang 和 MSVC 链接器的问题，**强烈推荐使用 WSL 或 Linux 环境**，这样可以避免所有 Windows 特定的编译问题。
+
 ### Rust 未安装
 
 **错误信息**：`Rust 未安装或不在 PATH 中`
@@ -135,28 +183,12 @@ cd /mnt/f/webrtc/android
 
 ### cargo build 失败
 
-**错误信息**：`Rust 库编译失败: libdeepfilter_ort.a 不存在`
+**错误信息**：`Rust 库编译失败: libdeepfilter_ort.so 不存在`
 
 **解决方法**：
 1. 检查 Rust 项目路径是否正确
 2. 手动进入 Rust 项目目录执行 `cargo build --release --target aarch64-linux-android` 查看详细错误
 3. 确保 Android NDK 路径配置正确（在 `deepfilter-ort/.cargo/config.toml` 中）
-
-### ndk-build 失败
-
-**错误信息**：`Android NDK not found`
-
-**解决方法**：
-1. 在 `local.properties` 中配置 NDK 路径：
-   ```properties
-   ndk.dir=C\:\\androidsdk\\ndk\\29.0.13113456
-   ```
-2. 或在 `build.gradle` 中配置：
-   ```gradle
-   android {
-       ndkPath "C:\\androidsdk\\ndk\\29.0.13113456"
-   }
-   ```
 
 ## 优势
 
@@ -196,7 +228,5 @@ rustflags = ["-C", "link-arg=-landroid", "-C", "link-arg=-llog"]
 ## 相关文件
 
 - `app/build.gradle` - Gradle 构建配置（包含 Rust 自动化任务）
-- `app/src/main/jni/Android.mk` - ndk-build 配置
-- `app/src/main/jni/Application.mk` - NDK 应用配置
 - `deepfilter-ort/Cargo.toml` - Rust 项目配置
 - `deepfilter-ort/.cargo/config.toml` - Rust 工具链配置

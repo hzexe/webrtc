@@ -6,8 +6,8 @@ plugins {
 def rustProjectPath = '../../deepfilter-ort'
 def rustTarget = 'aarch64-linux-android'
 def rustOutputDir = "${rustProjectPath}/target/${rustTarget}/release"
-def rustLibName = 'libdeepfilter_ort.a'
-def jniLibDir = 'src/main/jni'
+def rustLibName = 'libdeepfilter_ort.so'
+def jniLibDir = 'src/main/jniLibs/arm64-v8a'
 
 android {
     namespace 'com.webrtc.audio.example'
@@ -47,12 +47,6 @@ android {
         }
     }
     
-    externalNativeBuild {
-        ndkBuild {
-            path 'src/main/jni/Android.mk'
-        }
-    }
-    
     aaptOptions {
         noCompress 'tgz'
     }
@@ -60,7 +54,7 @@ android {
 
 // 自定义任务：编译 Rust 代码
 task buildRustLib(type: Exec) {
-    description = '编译 Rust 静态库用于 Android'
+    description = '编译 Rust 动态库用于 Android'
     group = 'build'
     
     workingDir rustProjectPath
@@ -90,9 +84,9 @@ task buildRustLib(type: Exec) {
     }
 }
 
-// 自定义任务：复制 Rust 库到 jni 目录
+// 自定义任务：复制 Rust 库到 jniLibs 目录
 task copyRustLib(type: Copy, dependsOn: buildRustLib) {
-    description = '复制编译好的 Rust 静态库到 jni 目录'
+    description = '复制编译好的 Rust 动态库到 jniLibs 目录'
     group = 'build'
     
     from rustOutputDir
@@ -106,7 +100,7 @@ task copyRustLib(type: Copy, dependsOn: buildRustLib) {
 
 // 确保在构建 Android 之前先编译 Rust
 tasks.whenTaskAdded { task ->
-    if (task.name == 'externalNativeBuildDebug' || task.name == 'externalNativeBuildRelease') {
+    if (task.name == 'preDebugBuild' || task.name == 'preReleaseBuild') {
         task.dependsOn copyRustLib
     }
 }

@@ -67,9 +67,9 @@ jobs:
           
           echo "Rust 交叉编译配置完成"
           
-      - name: 编译 Rust 静态库
+      - name: 编译 Rust 动态库
         run: |
-          echo "开始编译 Rust 静态库（${{ env.BUILD_TYPE }} 模式）..."
+          echo "开始编译 Rust 动态库（${{ env.BUILD_TYPE }} 模式）..."
           cd deepfilter-ort
           
           # 根据编译类型设置参数
@@ -81,13 +81,13 @@ jobs:
             echo "使用 Debug 模式编译"
           fi
           
-          # 编译静态库
+          # 编译动态库
           cargo build $CARGO_BUILD_FLAGS --target ${{ env.RUST_TARGET }}
           
           # 检查编译产物
-          LIB_PATH="target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a"
+          LIB_PATH="target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.so"
           if [ -f "$LIB_PATH" ]; then
-            echo "编译成功！静态库路径: $LIB_PATH"
+            echo "编译成功！动态库路径: $LIB_PATH"
             ls -lh $LIB_PATH
           else
             echo "错误: 未找到编译产物 $LIB_PATH"
@@ -129,6 +129,7 @@ jobs:
           echo "创建 Maven 项目结构..."
           mkdir -p deepfilter-android/src/main/java/com/webrtc/audio
           mkdir -p deepfilter-android/src/main/jniLibs/arm64-v8a
+          mkdir -p deepfilter-android/src/main/jni
           mkdir -p deepfilter-android/src/main/assets
           echo "Maven 项目结构创建完成"
 
@@ -139,21 +140,12 @@ jobs:
              deepfilter-android/src/main/java/com/webrtc/audio/DeepFilterNet.java
           echo "Java 源文件已复制"
 
-      - name: 复制静态库到 Maven 项目
+      - name: 复制动态库到 Maven 项目
         run: |
-          echo "复制静态库..."
-          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a \
-             deepfilter-android/src/main/jniLibs/arm64-v8a/libdeepfilter_ort.a
-          echo "静态库已复制"
-
-      - name: 复制 JNI 配置文件到 Maven 项目
-        run: |
-          echo "复制 JNI 配置文件..."
-          mkdir -p deepfilter-android/src/main/jni
-          cp output/jni/Android.mk deepfilter-android/src/main/jni/Android.mk
-          cp output/jni/Application.mk deepfilter-android/src/main/jni/Application.mk
-          cp output/jni/deepfilter_ort.h deepfilter-android/src/main/jni/deepfilter_ort.h
-          echo "JNI 配置文件已复制"
+          echo "复制动态库..."
+          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.so \
+             deepfilter-android/src/main/jniLibs/arm64-v8a/libdeepfilter_ort.so
+          echo "动态库已复制"
 
       - name: 更新 pom.xml 版本号
         run: |
@@ -232,9 +224,9 @@ jobs:
         run: |
           echo "复制编译产物到输出目录..."
           
-          # 复制静态库
-          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a \
-             output/android/libdeepfilter_ort.a
+          # 复制动态库
+          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.so \
+             output/android/libdeepfilter_ort.so
           
           # 复制 Maven 打包产物
           cp deepfilter-android/target/*.jar output/ 2>/dev/null || true
@@ -270,7 +262,7 @@ jobs:
           /*
            * DeepFilterNet JNI 接口头文件
            * 
-           * 本文件声明了 Rust 静态库提供的 JNI 函数
+           * 本文件声明了 Rust 动态库提供的 JNI 函数
            * 用于 Android 集成
            */
           
@@ -354,17 +346,16 @@ jobs:
           cat > output/jni/Android.mk << 'EOF'
           # DeepFilterNet Android NDK 构建配置
           # 
-          # 本文件用于将 Rust 编译的静态库集成到 Android 项目中
+          # 本文件用于将 Rust 编译的动态库集成到 Android 项目中
           
           LOCAL_PATH := $(call my-dir)
           
-          # 预编译 DeepFilterNet 静态库
+          # 预编译 DeepFilterNet 动态库
           include $(CLEAR_VARS)
           LOCAL_MODULE := deepfilter_ort
-          LOCAL_SRC_FILES := ../android/libdeepfilter_ort.a
+          LOCAL_SRC_FILES := ../android/libdeepfilter_ort.so
           LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
-          LOCAL_LDLIBS := -llog -landroid
-          include $(PREBUILT_STATIC_LIBRARY)
+          include $(PREBUILT_SHARED_LIBRARY)
           
           # 创建 JNI 模块（如果需要额外的 C++ 桥接代码）
           # 注意：当前实现中，Rust 直接导出 JNI 函数，无需额外的 C++ 模块
@@ -387,7 +378,7 @@ jobs:
           # 最小 Android API 版本
           APP_PLATFORM := android-29
           
-          # STL 版本
+          # STL 版本（使用共享库以支持动态库）
           APP_STL := c++_shared
           
           # 构建模式（release 或 debug）
@@ -395,6 +386,9 @@ jobs:
           
           # 启用 NEON 指令集优化
           APP_CFLAGS := -mfpu=neon
+          
+          # 启用 PIE（Position Independent Executable）
+          APP_PIE := true
           EOF
           
           echo "Application.mk 构建文件已创建"
@@ -430,11 +424,11 @@ jobs:
           ## 文件说明
           
           ### 核心文件
-          - \`android/libdeepfilter_ort.a\` - Rust 编译的静态库（ARM64 架构）
-          - \`java/com/webrtc/audio/DeepFilterNet.java\` - Java 接口类
-          - \`jni/deepfilter_ort.h\` - JNI 头文件声明
-          - \`jni/Android.mk\` - Android NDK 构建配置
-          - \`jni/Application.mk\` - Android NDK 应用配置
+          - `android/libdeepfilter_ort.so` - Rust 编译的动态库（ARM64 架构）
+          - `java/com/webrtc/audio/DeepFilterNet.java` - Java 接口类
+          - `jni/deepfilter_ort.h` - JNI 头文件声明
+          - `jni/Android.mk` - Android NDK 构建配置
+          - `jni/Application.mk` - Android NDK 应用配置
           
           ## 快速开始
           
@@ -442,29 +436,27 @@ jobs:
           
           将以下文件复制到你的 Android 项目中：
           
-          \`\`\`
+          ```
           android/app/src/main/
-          ├── jni/
-          │   ├── Android.mk
-          │   ├── Application.mk
-          │   └── deepfilter_ort.h
+          ├── jniLibs/arm64-v8a/
+          │   └── libdeepfilter_ort.so  # 动态库
           └── assets/
               └── DeepFilterNet3_ll_onnx.tgz  # 模型文件
-          \`\`\`
+          ```
           
-          ### 2. 复制静态库
+          ### 2. 复制动态库
           
-          将 \`libdeepfilter_ort.a\` 复制到 \`android/app/src/main/jni/\` 目录。
+          将 `libdeepfilter_ort.so` 复制到 `android/app/src/main/jniLibs/arm64-v8a/` 目录。
           
           ### 3. 复制 Java 源文件
           
-          将 \`DeepFilterNet.java\` 复制到 \`android/app/src/main/java/com/webrtc/audio/\` 目录。
+          将 `DeepFilterNet.java` 复制到 `android/app/src/main/java/com/webrtc/audio/` 目录。
           
           ### 4. 修改 build.gradle
           
-          在 \`app/build.gradle\` 中添加：
+          在 `app/build.gradle` 中添加：
           
-          \`\`\`groovy
+          ```groovy
           android {
               ...
               defaultConfig {
@@ -476,15 +468,15 @@ jobs:
               ...
               sourceSets {
                   main {
-                      jniLibs.srcDirs = ['src/main/jni']
+                      jniLibs.srcDirs = ['src/main/jniLibs']
                   }
               }
           }
-          \`\`\`
+          ```
           
           ### 5. 使用示例
           
-          \`\`\`java
+          ```java
           import com.webrtc.audio.DeepFilterNet;
           
           // 创建 DeepFilterNet 实例
@@ -509,7 +501,7 @@ jobs:
           
           // 释放资源
           dfn.release();
-          \`\`\`
+          ```
           
           ## API 说明
           
@@ -531,6 +523,13 @@ jobs:
           - \`boolean isInitialized()\` - 检查是否已初始化
           
           ## 技术细节
+          
+          ### 动态库优势
+          
+          - **更小的 APK 体积**：动态库可以按需加载，减少 APK 体积
+          - **更好的内存管理**：动态库可以在多个进程间共享，减少内存占用
+          - **更灵活的更新**：动态库可以独立更新，无需重新编译整个应用
+          - **符合 Android 最佳实践**：Android 推荐使用动态库而非静态库
           
           ### 内存优化
           
@@ -580,7 +579,7 @@ jobs:
           
           ### 问题：性能不佳
           
-          - 确认使用 Release 版本的静态库
+          - 确认使用 Release 版本的动态库
           - 检查设备架构是否为 ARM64
           - 尝试调整帧大小
           
@@ -617,7 +616,7 @@ jobs:
           
           库信息:
           - 库名称: deepfilter_ort
-          - 库类型: 静态库 (staticlib)
+          - 库类型: 动态库 (cdylib)
           - 目标架构: ARM64 (aarch64-linux-android)
           - 最小 API 级别: 29
           
@@ -737,7 +736,7 @@ jobs:
             - `deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.zip` - 完整的库文件包（zip 格式）
             
             包含以下内容：
-            - `android/libdeepfilter_ort.a` - Rust 编译的静态库（ARM64 架构）
+            - `android/libdeepfilter_ort.so` - Rust 编译的动态库（ARM64 架构）
             - `java/com/webrtc/audio/DeepFilterNet.java` - Java 接口类
             - `jni/deepfilter_ort.h` - JNI 头文件声明
             - `jni/Android.mk` - Android NDK 构建配置

@@ -33,4 +33,4 @@ jni = "0.20"
 [lib]
 name = "deepfilter_ort"
 path = "src/lib.rs"
-crate-type = ["staticlib"]
+crate-type = ["cdylib"]
