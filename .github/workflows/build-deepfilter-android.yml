@@ -181,6 +181,10 @@ jobs:
           echo "开始 Maven 打包..."
           cd deepfilter-android
           
+          # 设置版本号
+          VERSION="1.0.${{ github.run_number }}"
+          echo "使用版本号: $VERSION"
+          
           # 设置 Android SDK 路径
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
@@ -224,6 +228,11 @@ jobs:
           cd deepfilter-android
           
           VERSION="1.0.${{ github.run_number }}"
+          echo "发布版本: $VERSION"
+          
+          # 检查文件是否存在
+          echo "检查 JAR 文件..."
+          ls -lh target/
           
           # 使用 Maven 发布
           mvn deploy:deploy-file \
