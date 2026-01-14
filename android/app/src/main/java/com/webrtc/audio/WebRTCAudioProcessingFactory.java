@@ -37,7 +37,7 @@ public class WebRTCAudioProcessingFactory {
         public static AudioProcessingConfig createHighQuality() {
             AudioProcessingConfig config = new AudioProcessingConfig();
             config.enableAEC = true;
-            config.enableNS = true;
+            config.enableNS = false;  // 禁用 WebRTC NS，使用 DeepFilterNet
             config.enableAGC = true;
             config.enableVAD = true;
             return config;
@@ -51,7 +51,7 @@ public class WebRTCAudioProcessingFactory {
         public static AudioProcessingConfig createLowLatency() {
             AudioProcessingConfig config = new AudioProcessingConfig();
             config.enableAEC = true;
-            config.enableNS = true;
+            config.enableNS = false;  // 禁用 WebRTC NS，使用 DeepFilterNet
             config.enableAGC = false;
             config.enableVAD = true;
             return config;

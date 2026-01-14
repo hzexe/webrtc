@@ -49,6 +49,10 @@ public class AAudioRecorder {
     private AudioTrack audioTrack;
     private PeerConnection peerConnection;
 
+    // DeepFilterNet 降噪引擎
+    private DeepFilterNet deepFilterNet;
+    private boolean useDeepFilterNet = true;
+
     // 文件与状态
     private FileOutputStream pcmFos;
     private AtomicBoolean isRecording = new AtomicBoolean(false);
@@ -62,6 +66,22 @@ public class AAudioRecorder {
     public AAudioRecorder(Context context) {
         this.appContext = context.getApplicationContext();
         this.mainHandler = new Handler(Looper.getMainLooper());
+        
+        // 初始化 DeepFilterNet
+        if (useDeepFilterNet) {
+            try {
+                deepFilterNet = new DeepFilterNet(context);
+                if (deepFilterNet.initialize()) {
+                    Log.d(TAG, "DeepFilterNet 初始化成功");
+                } else {
+                    Log.e(TAG, "DeepFilterNet 初始化失败，将使用 WebRTC NS");
+                    deepFilterNet = null;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "DeepFilterNet 初始化异常: " + e.getMessage());
+                deepFilterNet = null;
+            }
+        }
     }
 
     /**
@@ -121,7 +141,7 @@ public class AAudioRecorder {
                     .setAudioSource(MediaRecorder.AudioSource.MIC)
                     .setUseStereoInput(USE_STEREO)
                     .setUseHardwareAcousticEchoCanceler(true)
-                    .setUseHardwareNoiseSuppressor(true)
+                    .setUseHardwareNoiseSuppressor(false)  // 禁用硬件噪声抑制，使用 DeepFilterNet
                     .setSamplesReadyCallback(audioSamples -> {
                         if (isRunning.get() && pcmFos != null) {
                             handleAudioDataSafe(audioSamples);
@@ -387,15 +407,83 @@ public class AAudioRecorder {
 
         try {
             byte[] data = audioSamples.getData();
-            pcmFos.write(data);
+            
+            // 使用 DeepFilterNet 进行降噪处理
+            byte[] processedData = data;
+            if (deepFilterNet != null && deepFilterNet.isInitialized()) {
+                // 将 PCM 16-bit 转换为 f32
+                float[] floatData = pcm16ToFloat(data);
+                float[] processedFloat = new float[floatData.length];
+                
+                // 调用 DeepFilterNet 处理
+                int result = deepFilterNet.process(floatData, processedFloat);
+                
+                if (result == 0) {
+                    // 将处理后的 f32 转换回 PCM 16-bit
+                    processedData = floatToPcm16(processedFloat);
+                    Log.d(TAG, "DeepFilterNet 处理成功");
+                } else {
+                    Log.e(TAG, "DeepFilterNet 处理失败，使用原始数据");
+                    processedData = data;
+                }
+            }
+            
+            pcmFos.write(processedData);
             pcmFos.flush();
 
-            totalBytes += data.length;
-            Log.d(TAG, "✅ 写入数据: " + data.length + "字节 | 累计: " + totalBytes + "字节");
+            totalBytes += processedData.length;
+            Log.d(TAG, "✅ 写入数据: " + processedData.length + "字节 | 累计: " + totalBytes + "字节");
         } catch (IOException e) {
             Log.e(TAG, "写入数据失败: " + e.getMessage());
             stopRecording();
         }
+    }
+
+    /**
+     * 将 PCM 16-bit 字节数组转换为 float 数组
+     * 
+     * @param pcmData PCM 16-bit 字节数组（小端序）
+     * @return float 数组
+     */
+    private float[] pcm16ToFloat(byte[] pcmData) {
+        int sampleCount = pcmData.length / 2;
+        float[] floatData = new float[sampleCount];
+        
+        for (int i = 0; i < sampleCount; i++) {
+            // 读取 16-bit PCM（小端序）
+            int sample = ((pcmData[i * 2 + 1] & 0xFF) << 8) | (pcmData[i * 2] & 0xFF);
+            // 转换为有符号 16-bit
+            if (sample > 32767) {
+                sample -= 65536;
+            }
+            // 归一化到 [-1.0, 1.0]
+            floatData[i] = sample / 32768.0f;
+        }
+        
+        return floatData;
+    }
+
+    /**
+     * 将 float 数组转换为 PCM 16-bit 字节数组
+     * 
+     * @param floatData float 数组（范围 [-1.0, 1.0]）
+     * @return PCM 16-bit 字节数组（小端序）
+     */
+    private byte[] floatToPcm16(float[] floatData) {
+        byte[] pcmData = new byte[floatData.length * 2];
+        
+        for (int i = 0; i < floatData.length; i++) {
+            // 限制范围到 [-1.0, 1.0]
+            float sample = Math.max(-1.0f, Math.min(1.0f, floatData[i]));
+            // 转换为 16-bit PCM
+            int pcm = (int) (sample * 32767.0f);
+            
+            // 写入小端序
+            pcmData[i * 2] = (byte) (pcm & 0xFF);
+            pcmData[i * 2 + 1] = (byte) ((pcm >> 8) & 0xFF);
+        }
+        
+        return pcmData;
     }
 
     /**

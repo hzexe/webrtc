@@ -1,0 +1,760 @@
+name: Build DeepFilterNet Android Library
+
+on:
+  push:
+    branches:
+      - my-modifications
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '编译类型 (release/debug)'
+        required: false
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+
+env:
+  BUILD_TYPE: ${{ github.event.inputs.build_type || 'release' }}
+  ANDROID_NDK_VERSION: '29.0.13113456'
+  RUST_TARGET: 'aarch64-linux-android'
+
+jobs:
+  build-deepfilter:
+    name: 编译 DeepFilterNet Android 库
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          
+      - name: 设置 Rust 工具链
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ env.RUST_TARGET }}
+          override: true
+          
+      - name: 安装 Android NDK
+        run: |
+          echo "正在下载 Android NDK ${{ env.ANDROID_NDK_VERSION }}..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q android-ndk-r29-linux.zip
+          echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/android-ndk-r29" >> $GITHUB_ENV
+          echo "$GITHUB_WORKSPACE/android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+          echo "Android NDK 安装完成"
+          
+      - name: 配置 Rust 交叉编译
+        run: |
+          echo "配置 Rust 交叉编译环境..."
+          
+          # 创建 .cargo 目录
+          mkdir -p deepfilter-ort/.cargo
+          
+          # 创建 config.toml 配置文件
+          cat > deepfilter-ort/.cargo/config.toml << EOF
+          [target.${{ env.RUST_TARGET }}]
+          ar = "$GITHUB_WORKSPACE/android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+          linker = "$GITHUB_WORKSPACE/android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang"
+          rustflags = ["-C", "link-arg=-landroid", "-C", "link-arg=-llog"]
+
+          [build]
+          target = "${{ env.RUST_TARGET }}"
+          EOF
+          
+          echo "Rust 交叉编译配置完成"
+          
+      - name: 编译 Rust 静态库
+        run: |
+          echo "开始编译 Rust 静态库（${{ env.BUILD_TYPE }} 模式）..."
+          cd deepfilter-ort
+          
+          # 根据编译类型设置参数
+          if [ "${{ env.BUILD_TYPE }}" = "release" ]; then
+            CARGO_BUILD_FLAGS="--release"
+            echo "使用 Release 模式编译"
+          else
+            CARGO_BUILD_FLAGS=""
+            echo "使用 Debug 模式编译"
+          fi
+          
+          # 编译静态库
+          cargo build $CARGO_BUILD_FLAGS --target ${{ env.RUST_TARGET }}
+          
+          # 检查编译产物
+          LIB_PATH="target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a"
+          if [ -f "$LIB_PATH" ]; then
+            echo "编译成功！静态库路径: $LIB_PATH"
+            ls -lh $LIB_PATH
+          else
+            echo "错误: 未找到编译产物 $LIB_PATH"
+            exit 1
+          fi
+          
+      - name: 设置 Java 环境
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: 配置 Maven settings.xml
+        run: |
+          echo "配置 Maven settings.xml..."
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          echo "Maven settings.xml 配置完成"
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+
+      - name: 创建 Maven 项目结构
+        run: |
+          echo "创建 Maven 项目结构..."
+          mkdir -p deepfilter-android/src/main/java/com/webrtc/audio
+          mkdir -p deepfilter-android/src/main/jniLibs/arm64-v8a
+          mkdir -p deepfilter-android/src/main/assets
+          echo "Maven 项目结构创建完成"
+
+      - name: 复制 Java 源文件到 Maven 项目
+        run: |
+          echo "复制 Java 源文件..."
+          cp android/app/src/main/java/com/webrtc/audio/DeepFilterNet.java \
+             deepfilter-android/src/main/java/com/webrtc/audio/DeepFilterNet.java
+          echo "Java 源文件已复制"
+
+      - name: 复制静态库到 Maven 项目
+        run: |
+          echo "复制静态库..."
+          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a \
+             deepfilter-android/src/main/jniLibs/arm64-v8a/libdeepfilter_ort.a
+          echo "静态库已复制"
+
+      - name: 复制 JNI 配置文件到 Maven 项目
+        run: |
+          echo "复制 JNI 配置文件..."
+          mkdir -p deepfilter-android/src/main/jni
+          cp output/jni/Android.mk deepfilter-android/src/main/jni/Android.mk
+          cp output/jni/Application.mk deepfilter-android/src/main/jni/Application.mk
+          cp output/jni/deepfilter_ort.h deepfilter-android/src/main/jni/deepfilter_ort.h
+          echo "JNI 配置文件已复制"
+
+      - name: 更新 pom.xml 版本号
+        run: |
+          echo "更新 pom.xml 版本号..."
+          VERSION="1.0.${{ github.run_number }}"
+          sed -i "s/<version>1.0.0<\/version>/<version>$VERSION<\/version>/g" deepfilter-android/pom.xml
+          echo "版本号已更新为: $VERSION"
+
+      - name: Maven 打包
+        run: |
+          echo "开始 Maven 打包..."
+          cd deepfilter-android
+          
+          # 设置 Android SDK 路径
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
+          
+          # 编译 Java 文件（使用 javac 直接编译）
+          mkdir -p target/classes
+          
+          # 编译 Java 源文件，添加 Android SDK 依赖
+          javac -d target/classes \
+            -encoding UTF-8 \
+            -source 1.8 \
+            -target 1.8 \
+            -cp "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
+            src/main/java/com/webrtc/audio/DeepFilterNet.java
+          
+          # 创建 JAR 包
+          jar cvf target/deepfilter-android-$VERSION.jar -C target/classes .
+          
+          # 创建源码 JAR
+          jar cvf target/deepfilter-android-$VERSION-sources.jar -C src/main/java .
+          
+          # 创建 Javadoc JAR
+          mkdir -p target/javadoc
+          javadoc -d target/javadoc \
+            -encoding UTF-8 \
+            -charset UTF-8 \
+            -docencoding UTF-8 \
+            -sourcepath src/main/java \
+            -subpackages com.webrtc.audio
+          jar cvf target/deepfilter-android-$VERSION-javadoc.jar -C target/javadoc .
+          
+          echo "Maven 打包完成"
+          ls -lh target/
+
+      - name: 发布到 GitHub Packages
+        run: |
+          echo "发布到 GitHub Packages..."
+          cd deepfilter-android
+          
+          VERSION="1.0.${{ github.run_number }}"
+          
+          # 使用 Maven 发布
+          mvn deploy:deploy-file \
+            -DgroupId=com.webrtc.audio \
+            -DartifactId=deepfilter-android \
+            -Dversion=$VERSION \
+            -Dpackaging=jar \
+            -Dfile=target/deepfilter-android-$VERSION.jar \
+            -Dsources=target/deepfilter-android-$VERSION-sources.jar \
+            -Djavadoc=target/deepfilter-android-$VERSION-javadoc.jar \
+            -DpomFile=pom.xml \
+            -DrepositoryId=github \
+            -Durl=https://maven.pkg.github.com/${{ github.repository }}
+          
+          echo "已发布到 GitHub Packages"
+
+      - name: 创建输出目录
+        run: |
+          mkdir -p output/android
+          echo "输出目录已创建"
+          
+      - name: 复制编译产物
+        run: |
+          echo "复制编译产物到输出目录..."
+          
+          # 复制静态库
+          cp deepfilter-ort/target/${{ env.RUST_TARGET }}/${{ env.BUILD_TYPE }}/libdeepfilter_ort.a \
+             output/android/libdeepfilter_ort.a
+          
+          # 复制 Maven 打包产物
+          cp deepfilter-android/target/*.jar output/ 2>/dev/null || true
+          cp deepfilter-android/target/*.aar output/ 2>/dev/null || true
+          
+          echo "编译产物已复制"
+          ls -lh output/android/
+          ls -lh output/*.jar output/*.aar 2>/dev/null || true
+          
+      - name: 复制 Java 源文件
+        run: |
+          echo "复制 Java 源文件..."
+          
+          # 创建 Java 目录结构
+          mkdir -p output/java/com/webrtc/audio
+          
+          # 复制 DeepFilterNet.java
+          cp android/app/src/main/java/com/webrtc/audio/DeepFilterNet.java \
+             output/java/com/webrtc/audio/DeepFilterNet.java
+          
+          echo "Java 源文件已复制"
+          ls -lh output/java/com/webrtc/audio/
+          
+      - name: 创建 JNI 头文件
+        run: |
+          echo "生成 JNI 头文件..."
+          
+          # 创建 JNI 目录
+          mkdir -p output/jni
+          
+          # 创建简单的 JNI 头文件（声明）
+          cat > output/jni/deepfilter_ort.h << 'EOF'
+          /*
+           * DeepFilterNet JNI 接口头文件
+           * 
+           * 本文件声明了 Rust 静态库提供的 JNI 函数
+           * 用于 Android 集成
+           */
+          
+          #ifndef DEEPFILTER_ORT_H
+          #define DEEPFILTER_ORT_H
+          
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+          
+          /*
+           * 创建 DeepFilterNet 实例
+           * 
+           * @param env JNI 环境
+           * @param clazz Java 类
+           * @param modelBytes 模型压缩包字节数组（tar.gz）
+           * @param postFilterBeta 后滤波器 beta 参数（控制降噪强度）
+           * @param attenLimDb 衰减限制（dB）
+           * @return 原生句柄（0 表示失败）
+           */
+          jlong Java_com_webrtc_audio_DeepFilterNet_nativeCreate(
+              JNIEnv *env,
+              jobject clazz,
+              jbyteArray modelBytes,
+              jfloat postFilterBeta,
+              jfloat attenLimDb
+          );
+          
+          /*
+           * 处理一帧音频数据（优化版本 - 支持偏移量和长度参数）
+           * 
+           * @param env JNI 环境
+           * @param clazz Java 类
+           * @param handle 原生句柄
+           * @param input 输入缓冲区（f32，小端序）
+           * @param inputOffset 输入缓冲区起始偏移量（字节）
+           * @param inputLength 输入缓冲区有效长度（字节）
+           * @param output 输出缓冲区（f32，小端序）
+           * @param outputOffset 输出缓冲区起始偏移量（字节）
+           * @param frameSize 帧大小（采样点数）
+           * @return LSNR 值（负数表示失败）
+           */
+          jfloat Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
+              JNIEnv *env,
+              jobject clazz,
+              jlong handle,
+              jbyteArray input,
+              jint inputOffset,
+              jint inputLength,
+              jbyteArray output,
+              jint outputOffset,
+              jint frameSize
+          );
+          
+          /*
+           * 销毁 DeepFilterNet 实例
+           * 
+           * @param env JNI 环境
+           * @param clazz Java 类
+           * @param handle 原生句柄
+           */
+          void Java_com_webrtc_audio_DeepFilterNet_nativeDestroy(
+              JNIEnv *env,
+              jobject clazz,
+              jlong handle
+          );
+          
+          #ifdef __cplusplus
+          }
+          #endif
+          
+          #endif /* DEEPFILTER_ORT_H */
+          EOF
+          
+          echo "JNI 头文件已生成"
+          
+      - name: 创建 Android.mk 构建文件
+        run: |
+          echo "创建 Android.mk 构建文件..."
+          
+          cat > output/jni/Android.mk << 'EOF'
+          # DeepFilterNet Android NDK 构建配置
+          # 
+          # 本文件用于将 Rust 编译的静态库集成到 Android 项目中
+          
+          LOCAL_PATH := $(call my-dir)
+          
+          # 预编译 DeepFilterNet 静态库
+          include $(CLEAR_VARS)
+          LOCAL_MODULE := deepfilter_ort
+          LOCAL_SRC_FILES := ../android/libdeepfilter_ort.a
+          LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)
+          LOCAL_LDLIBS := -llog -landroid
+          include $(PREBUILT_STATIC_LIBRARY)
+          
+          # 创建 JNI 模块（如果需要额外的 C++ 桥接代码）
+          # 注意：当前实现中，Rust 直接导出 JNI 函数，无需额外的 C++ 模块
+          EOF
+          
+          echo "Android.mk 构建文件已创建"
+          
+      - name: 创建 Application.mk 构建文件
+        run: |
+          echo "创建 Application.mk 构建文件..."
+          
+          cat > output/jni/Application.mk << 'EOF'
+          # DeepFilterNet Android NDK 应用配置
+          # 
+          # 本文件定义了 Android NDK 的编译选项
+          
+          # 目标 ABI（仅支持 ARM64）
+          APP_ABI := arm64-v8a
+          
+          # 最小 Android API 版本
+          APP_PLATFORM := android-29
+          
+          # STL 版本
+          APP_STL := c++_shared
+          
+          # 构建模式（release 或 debug）
+          APP_OPTIM := release
+          
+          # 启用 NEON 指令集优化
+          APP_CFLAGS := -mfpu=neon
+          EOF
+          
+          echo "Application.mk 构建文件已创建"
+          
+      - name: 创建 README 文档
+        run: |
+          echo "创建 README 文档..."
+          
+          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          cat > output/README.md << EOF
+          # DeepFilterNet Android 库
+          
+          DeepFilterNet 降噪引擎的 Android 集成库，基于 Tract 框架实现。
+          
+          ## 编译信息
+          
+          - 编译时间: $BUILD_TIME
+          - 编译类型: ${{ env.BUILD_TYPE }}
+          - Rust 目标: ${{ env.RUST_TARGET }}
+          - Android NDK 版本: ${{ env.ANDROID_NDK_VERSION }}
+          - GitHub Actions Run: ${{ github.run_number }}
+          - Commit: ${{ github.sha }}
+          
+          ## 功能特性
+          
+          - 基于 Tract 框架的 ONNX 模型推理
+          - 支持实时音频流处理
+          - 纯降噪模式，保守降噪强度
+          - 优化的内存管理，减少内存碎片
+          - 支持偏移量和长度参数，避免不必要的内存复制
+          
+          ## 文件说明
+          
+          ### 核心文件
+          - \`android/libdeepfilter_ort.a\` - Rust 编译的静态库（ARM64 架构）
+          - \`java/com/webrtc/audio/DeepFilterNet.java\` - Java 接口类
+          - \`jni/deepfilter_ort.h\` - JNI 头文件声明
+          - \`jni/Android.mk\` - Android NDK 构建配置
+          - \`jni/Application.mk\` - Android NDK 应用配置
+          
+          ## 快速开始
+          
+          ### 1. 集成到 Android 项目
+          
+          将以下文件复制到你的 Android 项目中：
+          
+          \`\`\`
+          android/app/src/main/
+          ├── jni/
+          │   ├── Android.mk
+          │   ├── Application.mk
+          │   └── deepfilter_ort.h
+          └── assets/
+              └── DeepFilterNet3_ll_onnx.tgz  # 模型文件
+          \`\`\`
+          
+          ### 2. 复制静态库
+          
+          将 \`libdeepfilter_ort.a\` 复制到 \`android/app/src/main/jni/\` 目录。
+          
+          ### 3. 复制 Java 源文件
+          
+          将 \`DeepFilterNet.java\` 复制到 \`android/app/src/main/java/com/webrtc/audio/\` 目录。
+          
+          ### 4. 修改 build.gradle
+          
+          在 \`app/build.gradle\` 中添加：
+          
+          \`\`\`groovy
+          android {
+              ...
+              defaultConfig {
+                  ...
+                  ndk {
+                      abiFilters 'arm64-v8a'
+                  }
+              }
+              ...
+              sourceSets {
+                  main {
+                      jniLibs.srcDirs = ['src/main/jni']
+                  }
+              }
+          }
+          \`\`\`
+          
+          ### 5. 使用示例
+          
+          \`\`\`java
+          import com.webrtc.audio.DeepFilterNet;
+          
+          // 创建 DeepFilterNet 实例
+          DeepFilterNet dfn = new DeepFilterNet(context);
+          
+          // 初始化（使用默认参数）
+          if (dfn.initialize()) {
+              // 处理音频数据
+              byte[] input = ...; // 输入音频数据（f32，小端序）
+              byte[] output = new byte[input.length];
+              
+              float lsnr = dfn.process(input, output);
+              
+              if (lsnr >= 0) {
+                  // 处理成功
+                  Log.d("DeepFilterNet", "LSNR: " + lsnr);
+              } else {
+                  // 处理失败
+                  Log.e("DeepFilterNet", "处理失败");
+              }
+          }
+          
+          // 释放资源
+          dfn.release();
+          \`\`\`
+          
+          ## API 说明
+          
+          ### DeepFilterNet 类
+          
+          #### 构造函数
+          - \`DeepFilterNet(Context context)\` - 从 assets 加载模型
+          
+          #### 初始化方法
+          - \`boolean initialize()\` - 使用默认参数初始化
+          - \`boolean initialize(float postFilterBeta, float attenLimDb)\` - 使用自定义参数初始化
+          
+          #### 处理方法
+          - \`float process(byte[] input, byte[] output)\` - 处理字节数组格式的音频数据
+          - \`float process(float[] input, float[] output)\` - 处理 float 数组格式的音频数据
+          
+          #### 其他方法
+          - \`void release()\` - 释放资源
+          - \`boolean isInitialized()\` - 检查是否已初始化
+          
+          ## 技术细节
+          
+          ### 内存优化
+          
+          - 使用 \`get_byte_array_elements\` 和 \`release_byte_array_elements\` 直接访问 Java 数组内存
+          - 支持输入/输出偏移量和长度参数，避免不必要的内存复制
+          - 重用缓冲区，减少内存分配次数
+          
+          ### 降噪参数
+          
+          - \`postFilterBeta\`: 后滤波器 beta 参数（默认 0.5）
+            - 控制降噪强度
+            - 值越大，降噪越强
+            - 推荐范围：0.1 - 1.0
+          
+          - \`attenLimDb\`: 衰减限制（默认 12.0 dB）
+            - 控制最大衰减量
+            - 值越大，允许的衰减越大
+            - 推荐范围：6.0 - 20.0 dB
+          
+          ### 音频格式
+          
+          - 采样率：48 kHz
+          - 通道数：单声道
+          - 数据格式：32-bit float（小端序）
+          - 帧大小：可变（建议 480 或 960 采样点）
+          
+          ## 性能优化建议
+          
+          1. **重用实例**：创建一次 \`DeepFilterNet\` 实例后重复使用，避免频繁初始化
+          2. **缓冲区重用**：重用输入/输出缓冲区，减少内存分配
+          3. **批量处理**：尽可能使用较大的帧大小（如 960 采样点）
+          4. **线程安全**：每个线程使用独立的 \`DeepFilterNet\` 实例
+          
+          ## 故障排除
+          
+          ### 问题：初始化失败
+          
+          - 检查模型文件是否正确放置在 assets 目录
+          - 检查模型文件名是否为 \`DeepFilterNet3_ll_onnx.tgz\`
+          - 查看日志输出，确认错误原因
+          
+          ### 问题：处理失败（返回负数 LSNR）
+          
+          - 检查输入/输出缓冲区长度是否一致
+          - 检查音频数据格式是否正确（f32，小端序）
+          - 确认 \`DeepFilterNet\` 实例已正确初始化
+          
+          ### 问题：性能不佳
+          
+          - 确认使用 Release 版本的静态库
+          - 检查设备架构是否为 ARM64
+          - 尝试调整帧大小
+          
+          ## 许可证
+          
+          本库基于 DeepFilterNet 项目（MIT/Apache-2.0 双重许可）。
+          
+          ## 参考链接
+          
+          - DeepFilterNet 官方仓库：https://github.com/Rikorose/DeepFilterNet
+          - Tract 框架：https://github.com/sonos/tract
+          - Android NDK 文档：https://developer.android.com/ndk
+          EOF
+          
+          echo "README 文档已创建"
+          
+      - name: 创建版本信息文件
+        run: |
+          echo "创建版本信息文件..."
+          
+          BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          cat > output/VERSION.txt << EOF
+          DeepFilterNet Android 库版本信息
+          =================================
+          
+          编译时间: $BUILD_TIME
+          编译类型: ${{ env.BUILD_TYPE }}
+          Rust 目标: ${{ env.RUST_TARGET }}
+          Android NDK 版本: ${{ env.ANDROID_NDK_VERSION }}
+          GitHub Actions Run: ${{ github.run_number }}
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          
+          库信息:
+          - 库名称: deepfilter_ort
+          - 库类型: 静态库 (staticlib)
+          - 目标架构: ARM64 (aarch64-linux-android)
+          - 最小 API 级别: 29
+          
+          依赖项:
+          - Tract 框架 (tract-core, tract-onnx, tract-pulse, tract-hir)
+          - DeepFilterNet libDF
+          - JNI (jni 0.21)
+          
+          功能特性:
+          - 基于 Tract 框架的 ONNX 模型推理
+          - 支持实时音频流处理
+          - 纯降噪模式，保守降噪强度
+          - 优化的内存管理
+          - 支持偏移量和长度参数
+          EOF
+          
+          echo "版本信息文件已创建"
+          
+      - name: 打包库文件
+        run: |
+          echo "打包库文件..."
+          
+          # 创建打包目录
+          PACKAGE_DIR="deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}"
+          mkdir -p $PACKAGE_DIR
+          
+          # 复制所有文件到打包目录
+          cp -r output/* $PACKAGE_DIR/
+          
+          # 创建压缩包
+          tar -czf ${PACKAGE_DIR}.tar.gz $PACKAGE_DIR
+          
+          # 也创建一个 zip 格式的压缩包
+          zip -qr ${PACKAGE_DIR}.zip $PACKAGE_DIR
+          
+          echo "打包完成"
+          ls -lh ${PACKAGE_DIR}.*
+          
+      - name: 上传编译产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}
+          path: |
+            output/
+            deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.tar.gz
+            deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.zip
+          retention-days: 90
+          
+      - name: 创建 Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/my-modifications'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}
+          name: DeepFilterNet Android ${{ env.BUILD_TYPE }} - Build ${{ github.run_number }}
+          body: |
+            DeepFilterNet Android 库编译产物
+            
+            ## 编译信息
+            - 编译类型: ${{ env.BUILD_TYPE }}
+            - Rust 目标: ${{ env.RUST_TARGET }}
+            - Android NDK 版本: ${{ env.ANDROID_NDK_VERSION }}
+            - Commit: ${{ github.sha }}
+            - GitHub Actions Run: ${{ github.run_number }}
+            
+            ## 功能特性
+            - 基于 Tract 框架的 ONNX 模型推理
+            - 支持实时音频流处理
+            - 纯降噪模式，保守降噪强度
+            - 优化的内存管理，减少内存碎片
+            - 支持偏移量和长度参数，避免不必要的内存复制
+            
+            ## Maven 依赖
+            
+            本库已发布到 GitHub Packages，可以通过以下方式集成到你的 Android 项目：
+            
+            ### 1. 添加仓库
+            在项目的 `settings.gradle` 或 `build.gradle` 中添加 GitHub Packages 仓库：
+            
+            ```gradle
+            repositories {
+                maven {
+                    url = uri("https://maven.pkg.github.com/${{ github.repository }}")
+                    credentials {
+                        username = System.getenv("GITHUB_ACTOR")
+                        password = System.getenv("GITHUB_TOKEN")
+                    }
+                }
+            }
+            ```
+            
+            ### 2. 添加依赖
+            在 `app/build.gradle` 中添加依赖：
+            
+            ```gradle
+            dependencies {
+                implementation 'com.webrtc.audio:deepfilter-android:1.0.${{ github.run_number }}'
+            }
+            ```
+            
+            ### 3. 配置 NDK
+            确保 `app/build.gradle` 中配置了 NDK：
+            
+            ```gradle
+            android {
+                ...
+                defaultConfig {
+                    ...
+                    ndk {
+                        abiFilters 'arm64-v8a'
+                    }
+                }
+            }
+            ```
+            
+            ## 文件说明
+            - `deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.tar.gz` - 完整的库文件包（tar.gz 格式）
+            - `deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.zip` - 完整的库文件包（zip 格式）
+            
+            包含以下内容：
+            - `android/libdeepfilter_ort.a` - Rust 编译的静态库（ARM64 架构）
+            - `java/com/webrtc/audio/DeepFilterNet.java` - Java 接口类
+            - `jni/deepfilter_ort.h` - JNI 头文件声明
+            - `jni/Android.mk` - Android NDK 构建配置
+            - `jni/Application.mk` - Android NDK 应用配置
+            - `README.md` - 详细的使用文档
+            - `VERSION.txt` - 版本信息文件
+            
+            ## 快速开始
+            1. 下载压缩包并解压
+            2. 阅读 `README.md` 了解详细的集成步骤
+            3. 按照 README 中的说明集成到你的 Android 项目
+            4. 参考 `DeepFilterNet.java` 中的示例代码使用 API
+            
+            ## 技术支持
+            如有问题，请查看 README.md 中的故障排除部分，或提交 Issue。
+          files: |
+            deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.tar.gz
+            deepfilter-android-${{ env.BUILD_TYPE }}-${{ github.run_number }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

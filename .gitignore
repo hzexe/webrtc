@@ -1,2 +1,142 @@
-.gradle
-/android/app/build
+# Android 项目
+.gradle/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/.DS_Store
+android/*.iml
+android/.externalNativeBuild
+android/.cxx/
+android/*.apk
+android/*.ap_
+android/*.aab
+android/app/release/
+android/app/debug/
+android/build/
+android/captures/
+
+# Android NDK 编译产物
+android/app/src/main/jni/*.a
+android/app/src/main/jni/*.so
+android/app/src/main/jni/*.o
+android/app/src/main/jni/obj/
+
+# Android Studio 临时文件
+android/.idea/
+android/*.iml
+android/.idea/libraries/
+android/.idea/modules.xml
+android/.idea/workspace.xml
+android/.idea/navEditor.xml
+android/.idea/assetWizardSettings.xml
+
+# Rust 项目
+deepfilter-ort/target/
+**/target/
+Cargo.lock
+**/*.rs.bk
+.cargo/
+
+# C/C++ 项目
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.obj
+*.lib
+*.exp
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# WebRTC 编译输出
+output/
+webrtc/out/
+webrtc/build/
+webrtc/.gclient_entries
+
+# 临时文件和日志
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+.vscode/
+*.code-workspace
+
+# 系统文件
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE 配置文件
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# 操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 压缩文件和备份
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.bak
+*.backup
+
+# Python 项目（DeepFilterNet Python 部分）
+DeepFilterNet/__pycache__/
+DeepFilterNet/*.py[cod]
+DeepFilterNet/*$py.class
+DeepFilterNet/.pytest_cache/
+DeepFilterNet/.mypy_cache/
+DeepFilterNet/*.egg-info/
+DeepFilterNet/dist/
+DeepFilterNet/build/
+
+# 模型文件（如果不需要版本控制）
+DeepFilterNet/models/*.zip
+DeepFilterNet/models/*.tar.gz
+!DeepFilterNet/models/DeepFilterNet3_ll_onnx.tar.gz
+
+# 测试覆盖率
+coverage/
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# 文档生成
+docs/_build/
+docs/.doctrees/
+
+# Maven 打包产物
+deepfilter-android/target/
+deepfilter-android/*.jar
+deepfilter-android/*.aar
+
+# GitHub Actions 缓存
+.github/workflows/*/target/
+
+# 临时导出目录
+android/app/src/main/assets/tmp/export/
+android/app/src/main/assets/tmp/export/*

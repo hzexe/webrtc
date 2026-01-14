@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
         String info = "采样率: 16kHz\n" +
                       "声道: 单声道\n" +
                       "硬件加速: AAudio (API 27+)\n" +
-                      "音频处理: 硬件AEC/NS";
+                      "音频处理: 硬件AEC + DeepFilterNet降噪";
         infoTextView.setText(info);
     }
     
@@ -163,10 +163,10 @@ public class MainActivity extends AppCompatActivity {
     private void configureWebRTCAudioSettings() {
         if (webRTCAudioCapturer != null) {
             webRTCAudioCapturer.setUseHardwareAEC(true);
-            webRTCAudioCapturer.setUseHardwareNS(true);
+            webRTCAudioCapturer.setUseHardwareNS(false);  // 禁用硬件噪声抑制，使用 DeepFilterNet
             webRTCAudioCapturer.setUseLowLatency(true);
             
-            Log.i(TAG, "Audio settings configured: Hardware AEC=ENABLED, Hardware NS=ENABLED, Low Latency=ENABLED");
+            Log.i(TAG, "Audio settings configured: Hardware AEC=ENABLED, Hardware NS=DISABLED (using DeepFilterNet), Low Latency=ENABLED");
             Log.i(TAG, "Audio processing info:\n" + webRTCAudioCapturer.getAudioProcessingInfo());
         }
     }
@@ -426,7 +426,7 @@ public class MainActivity extends AppCompatActivity {
                 "音频源: %s\n" +
                 "采样率: %d Hz\n" +
                 "声道: %d\n" +
-                "3A算法: AEC=启用, NS=启用, AGC=启用, VAD=启用\n" +
+                "3A算法: AEC=启用, NS=DeepFilterNet, AGC=启用, VAD=启用\n" +
                 "采集时长: %d 秒\n" +
                 "总帧数: %d\n" +
                 "总样本数: %d\n" +
