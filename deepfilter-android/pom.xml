@@ -111,13 +111,6 @@
                     <show>private</show>
                     <nohelp>true</nohelp>
                     <doclint>none</doclint>
-                    <additionalJOptions>
-                        <additionalJOption>-J-Duser.language=en</additionalJOption>
-                    </additionalJOptions>
-                    <additionalOptions>
-                        <additionalOption>-source</additionalOption>
-                        <additionalOption>8</additionalOption>
-                    </additionalOptions>
                 </configuration>
             </plugin>
         </plugins>
