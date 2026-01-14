@@ -193,6 +193,7 @@ jobs:
           mkdir -p target/classes
           
           # 编译 Java 源文件，添加 Android SDK 依赖
+          echo "编译 Java 源文件..."
           javac -d target/classes \
             -encoding UTF-8 \
             -source 1.8 \
@@ -200,13 +201,19 @@ jobs:
             -cp "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
             src/main/java/com/webrtc/audio/DeepFilterNet.java
           
+          echo "Java 编译完成"
+          ls -lh target/classes/
+          
           # 创建 JAR 包
+          echo "创建 JAR 包..."
           jar cvf target/deepfilter-android-$VERSION.jar -C target/classes .
           
           # 创建源码 JAR
+          echo "创建源码 JAR..."
           jar cvf target/deepfilter-android-$VERSION-sources.jar -C src/main/java .
           
           # 创建 Javadoc JAR
+          echo "创建 Javadoc JAR..."
           mkdir -p target/javadoc
           javadoc -d target/javadoc \
             -encoding UTF-8 \
