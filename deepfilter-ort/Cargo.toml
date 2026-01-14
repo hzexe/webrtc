@@ -2,7 +2,6 @@
 name = "deepfilter-ort"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.60"
 
 [dependencies]
 # 本地依赖：DeepFilterNet libDF
@@ -29,7 +28,7 @@ tar = "0.4"
 rust-ini = "^0.19"
 
 # JNI 接口
-jni = "0.21"
+jni = "0.20"
 
 [lib]
 name = "deepfilter_ort"

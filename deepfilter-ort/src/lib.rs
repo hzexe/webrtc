@@ -169,33 +169,29 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
 
     // 获取输入数组的直接指针（避免复制）
     let input_ptr = unsafe {
-        env.get_array_elements(&input, jni::objects::ReleaseMode::NoCopyBack)
+        env.get_byte_array_elements(&input, 0)
     };
 
-    if input_ptr.is_err() {
+    if input_ptr.is_null() {
         eprintln!("获取输入数组指针失败");
         return -1.0;
     }
 
-    let input_ptr = input_ptr.unwrap();
-
     // 获取输出数组的直接指针（避免复制）
     let output_ptr = unsafe {
-        env.get_array_elements(&output, jni::objects::ReleaseMode::NoCopyBack)
+        env.get_byte_array_elements(&output, 0)
     };
 
-    if output_ptr.is_err() {
+    if output_ptr.is_null() {
         eprintln!("获取输出数组指针失败");
-        let _ = env.release_array_elements(&input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
+        let _ = env.release_byte_array_elements(&input, input_ptr, 1);
         return -1.0;
     }
-
-    let output_ptr = output_ptr.unwrap();
 
     // 直接在 Java 数组内存上进行字节到 f32 的转换
     let input_bytes = unsafe {
         std::slice::from_raw_parts(
-            input_ptr.as_ptr().offset(input_offset as isize),
+            input_ptr.offset(input_offset as isize),
             input_length as usize,
         )
     };
@@ -228,7 +224,7 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
     // 直接将 f32 结果写入输出数组内存
     let output_bytes = unsafe {
         std::slice::from_raw_parts_mut(
-            output_ptr.as_ptr().offset(output_offset as isize),
+            output_ptr.offset(output_offset as isize),
             (frame_size * 4) as usize,
         )
     };
@@ -242,8 +238,8 @@ pub extern "system" fn Java_com_webrtc_audio_DeepFilterNet_nativeProcess(
     }
 
     // 释放数组指针（保留修改）
-    let _ = env.release_array_elements(&input, input_ptr, jni::objects::ReleaseMode::NoCopyBack);
-    let _ = env.release_array_elements(&output, output_ptr, jni::objects::ReleaseMode::Commit);
+    let _ = env.release_byte_array_elements(&input, input_ptr, 1);
+    let _ = env.release_byte_array_elements(&output, output_ptr, 0);
 
     lsnr
 }
