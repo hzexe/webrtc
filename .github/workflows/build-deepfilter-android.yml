@@ -1,9 +1,8 @@
-name: Build DeepFilterNet Android Library
+name: Publish DeepFilterNet Android Library
 
 on:
-  push:
-    branches:
-      - my-modifications
+  release:
+    types: [created]
   workflow_dispatch:
     inputs:
       build_type:
@@ -103,6 +102,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
+
+      - name: 设置 Java 8 环境（用于 Maven 编译和 Javadoc）
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          server-id: github
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          cache: 'maven'
+
       - name: 配置 Maven settings.xml
         run: |
           echo "配置 Maven settings.xml..."
@@ -112,8 +127,8 @@ jobs:
             <servers>
               <server>
                 <id>github</id>
-                <username>${{ github.actor }}</username>
-                <password>${{ secrets.GITHUB_TOKEN }}</password>
+                <username>${env.MAVEN_USERNAME}</username>
+                <password>${env.MAVEN_PASSWORD}</password>
               </server>
             </servers>
           </settings>
@@ -121,35 +136,6 @@ jobs:
           echo "Maven settings.xml 配置完成"
           echo "settings.xml 内容:"
           cat ~/.m2/settings.xml
-
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-
-      - name: 设置 Java 8 环境（用于编译和 Javadoc）
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-          cache: 'maven'
-
-      - name: 验证 Java 环境
-        run: |
-          echo "验证 Java 环境..."
-          echo "Java 版本:"
-          java -version
-          echo ""
-          echo "Java 编译器版本:"
-          javac -version
-          echo ""
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo ""
-          echo "验证 Maven 编译器配置:"
-          mvn -version
-          echo ""
-          echo "Java 环境验证完成"
 
       - name: 创建 Maven 项目结构
         run: |
@@ -181,89 +167,34 @@ jobs:
           sed -i "s/<version>1.0.0<\/version>/<version>$VERSION<\/version>/g" deepfilter-android/pom.xml
           echo "版本号已更新为: $VERSION"
 
-      - name: Maven 打包
+      - name: Maven 打包和部署
         run: |
-          echo "开始 Maven 打包..."
+          echo "开始 Maven 打包和部署..."
           cd deepfilter-android
           
           # 设置版本号
           VERSION="1.0.${{ github.run_number }}"
           echo "使用版本号: $VERSION"
           
-          # 设置 Android SDK 路径
-          export ANDROID_HOME=$ANDROID_SDK_ROOT
-          export ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT
+          # 设置环境变量
+          export MAVEN_USERNAME=${{ github.actor }}
+          export MAVEN_PASSWORD=${{ secrets.GITHUB_TOKEN }}
           
-          # 编译 Java 文件（使用 javac 直接编译）
-          mkdir -p target/classes
+          # 执行 Maven 部署（包括编译、打包、生成 Javadoc、发布）
+          mvn clean deploy \
+            -DskipTests \
+            -Drevision=$VERSION \
+            -Dmaven.compiler.source=1.8 \
+            -Dmaven.compiler.target=1.8 \
+            -Dproject.build.sourceEncoding=UTF-8
           
-          # 编译 Java 源文件，添加 Android SDK 依赖
-          echo "编译 Java 源文件..."
-          javac -d target/classes \
-            -encoding UTF-8 \
-            -source 1.8 \
-            -target 1.8 \
-            -cp "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
-            src/main/java/com/webrtc/audio/DeepFilterNet.java
-          
-          echo "Java 编译完成"
-          ls -lh target/classes/
-          
-          # 创建 JAR 包
-          echo "创建 JAR 包..."
-          jar cvf target/deepfilter-android-$VERSION.jar -C target/classes .
-          
-          # 创建源码 JAR
-          echo "创建源码 JAR..."
-          jar cvf target/deepfilter-android-$VERSION-sources.jar -C src/main/java .
-          
-          # 创建 Javadoc JAR
-          echo "创建 Javadoc JAR..."
-          mkdir -p target/javadoc
-          javadoc -d target/javadoc \
-            -encoding UTF-8 \
-            -charset UTF-8 \
-            -docencoding UTF-8 \
-            -source 1.8 \
-            -sourcepath src/main/java \
-            -bootclasspath "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
-            -classpath "$ANDROID_SDK_ROOT/platforms/android-34/android.jar" \
-            -subpackages com.webrtc.audio
-          jar cvf target/deepfilter-android-$VERSION-javadoc.jar -C target/javadoc .
-          
-          echo "Maven 打包完成"
+          echo "Maven 打包和部署完成"
           ls -lh target/
-
-      - name: 发布到 GitHub Packages
-        run: |
-          echo "发布到 GitHub Packages..."
-          cd deepfilter-android
-          
-          VERSION="1.0.${{ github.run_number }}"
-          echo "发布版本: $VERSION"
-          
-          # 检查文件是否存在
-          echo "检查 JAR 文件..."
-          ls -lh target/
-          
-          # 使用 Maven 发布
-          mvn deploy:deploy-file \
-            -DgroupId=com.webrtc.audio \
-            -DartifactId=deepfilter-android \
-            -Dversion=$VERSION \
-            -Dpackaging=jar \
-            -Dfile=target/deepfilter-android-$VERSION.jar \
-            -Dsources=target/deepfilter-android-$VERSION-sources.jar \
-            -Djavadoc=target/deepfilter-android-$VERSION-javadoc.jar \
-            -DpomFile=pom.xml \
-            -DrepositoryId=github \
-            -Durl=https://maven.pkg.github.com/${{ github.repository }}
-          
-          echo "已发布到 GitHub Packages"
 
       - name: 创建输出目录
         run: |
           mkdir -p output/android
+          mkdir -p output/maven
           echo "输出目录已创建"
           
       - name: 复制编译产物
@@ -275,12 +206,11 @@ jobs:
              output/android/libdeepfilter_ort.so
           
           # 复制 Maven 打包产物
-          cp deepfilter-android/target/*.jar output/ 2>/dev/null || true
-          cp deepfilter-android/target/*.aar output/ 2>/dev/null || true
+          cp deepfilter-android/target/*.jar output/maven/ 2>/dev/null || true
           
           echo "编译产物已复制"
           ls -lh output/android/
-          ls -lh output/*.jar output/*.aar 2>/dev/null || true
+          ls -lh output/maven/
           
       - name: 复制 Java 源文件
         run: |
@@ -444,6 +374,7 @@ jobs:
           echo "创建 README 文档..."
           
           BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          VERSION="1.0.${{ github.run_number }}"
           
           cat > output/README.md << EOF
           # DeepFilterNet Android 库
@@ -458,6 +389,7 @@ jobs:
           - Android NDK 版本: ${{ env.ANDROID_NDK_VERSION }}
           - GitHub Actions Run: ${{ github.run_number }}
           - Commit: ${{ github.sha }}
+          - Maven 版本: $VERSION
           
           ## 功能特性
           
@@ -466,6 +398,7 @@ jobs:
           - 纯降噪模式，保守降噪强度
           - 优化的内存管理，减少内存碎片
           - 支持偏移量和长度参数，避免不必要的内存复制
+          - 符合 GitHub Packages 标准发布流程
           
           ## 文件说明
           
@@ -475,6 +408,55 @@ jobs:
           - `jni/deepfilter_ort.h` - JNI 头文件声明
           - `jni/Android.mk` - Android NDK 构建配置
           - `jni/Application.mk` - Android NDK 应用配置
+          - `maven/` - Maven 打包产物（JAR、源码、Javadoc）
+          
+          ## Maven 集成
+          
+          ### 1. 配置 Maven 仓库
+          
+          在你的项目根目录的 `pom.xml` 中添加 GitHub Packages 仓库：
+          
+          ```xml
+          <repositories>
+              <repository>
+                  <id>github</id>
+                  <name>GitHub Packages</name>
+                  <url>https://maven.pkg.github.com/hzexe/webrtc</url>
+              </repository>
+          </repositories>
+          ```
+          
+          ### 2. 配置 Maven 认证
+          
+          在 `~/.m2/settings.xml` 中添加认证信息：
+          
+          ```xml
+          <settings>
+              <servers>
+                  <server>
+                      <id>github</id>
+                      <username>YOUR_GITHUB_USERNAME</username>
+                      <password>YOUR_GITHUB_TOKEN</password>
+                  </server>
+              </servers>
+          </settings>
+          ```
+          
+          注意：你需要创建一个 GitHub Personal Access Token，具有 `read:packages` 权限。
+          
+          ### 3. 添加依赖
+          
+          在你的 Android 项目的 `pom.xml` 中添加依赖：
+          
+          ```xml
+          <dependencies>
+              <dependency>
+                  <groupId>com.webrtc.audio</groupId>
+                  <artifactId>deepfilter-android</artifactId>
+                  <version>$VERSION</version>
+              </dependency>
+          </dependencies>
+          ```
           
           ## 快速开始
           
@@ -587,57 +569,31 @@ jobs:
           
           - \`postFilterBeta\`: 后滤波器 beta 参数（默认 0.5）
             - 控制降噪强度
-            - 值越大，降噪越强
-            - 推荐范围：0.1 - 1.0
+            - 值越大，降噪越强，但可能引入失真
+            - 推荐范围：0.3-0.7
           
-          - \`attenLimDb\`: 衰减限制（默认 12.0 dB）
+          - \`attenLimDb\`: 衰减限制（默认 80 dB）
             - 控制最大衰减量
-            - 值越大，允许的衰减越大
-            - 推荐范围：6.0 - 20.0 dB
+            - 防止过度降噪导致音频失真
+            - 推荐范围：60-100 dB
           
-          ### 音频格式
+          ## 构建流程
           
-          - 采样率：48 kHz
-          - 通道数：单声道
-          - 数据格式：32-bit float（小端序）
-          - 帧大小：可变（建议 480 或 960 采样点）
+          本项目使用 GitHub Actions 自动化构建和发布流程：
           
-          ## 性能优化建议
-          
-          1. **重用实例**：创建一次 \`DeepFilterNet\` 实例后重复使用，避免频繁初始化
-          2. **缓冲区重用**：重用输入/输出缓冲区，减少内存分配
-          3. **批量处理**：尽可能使用较大的帧大小（如 960 采样点）
-          4. **线程安全**：每个线程使用独立的 \`DeepFilterNet\` 实例
-          
-          ## 故障排除
-          
-          ### 问题：初始化失败
-          
-          - 检查模型文件是否正确放置在 assets 目录
-          - 检查模型文件名是否为 \`DeepFilterNet3_ll_onnx.tgz\`
-          - 查看日志输出，确认错误原因
-          
-          ### 问题：处理失败（返回负数 LSNR）
-          
-          - 检查输入/输出缓冲区长度是否一致
-          - 检查音频数据格式是否正确（f32，小端序）
-          - 确认 \`DeepFilterNet\` 实例已正确初始化
-          
-          ### 问题：性能不佳
-          
-          - 确认使用 Release 版本的动态库
-          - 检查设备架构是否为 ARM64
-          - 尝试调整帧大小
+          1. **Rust 编译**：使用 Android NDK 交叉编译 Rust 代码为 ARM64 动态库
+          2. **Maven 打包**：使用 Maven 标准流程编译 Java 代码、生成 Javadoc、打包 JAR
+          3. **GitHub Packages 发布**：自动发布到 GitHub Packages 仓库
+          4. **产物输出**：输出动态库、Java 源文件、JNI 头文件等
           
           ## 许可证
           
-          本库基于 DeepFilterNet 项目（MIT/Apache-2.0 双重许可）。
+          MIT License
           
-          ## 参考链接
+          ## 联系方式
           
-          - DeepFilterNet 官方仓库：https://github.com/Rikorose/DeepFilterNet
-          - Tract 框架：https://github.com/sonos/tract
-          - Android NDK 文档：https://developer.android.com/ndk
+          - 项目主页: https://github.com/hzexe/webrtc
+          - 问题反馈: https://github.com/hzexe/webrtc/issues
           EOF
           
           echo "README 文档已创建"
@@ -734,33 +690,31 @@ jobs:
             - 优化的内存管理，减少内存碎片
             - 支持偏移量和长度参数，避免不必要的内存复制
             
-            ## Maven 依赖
+            ## 下载和集成
             
-            本库已发布到 GitHub Packages，可以通过以下方式集成到你的 Android 项目：
+            本库通过 GitHub Releases 分发，可以通过以下方式集成到你的 Android 项目：
             
-            ### 1. 添加仓库
-            在项目的 `settings.gradle` 或 `build.gradle` 中添加 GitHub Packages 仓库：
+            ### 1. 下载库文件
+            从 GitHub Releases 页面下载最新的发布版本：
+            https://github.com/hzexe/webrtc/releases
             
-            ```gradle
-            repositories {
-                maven {
-                    url = uri("https://maven.pkg.github.com/${{ github.repository }}")
-                    credentials {
-                        username = System.getenv("GITHUB_ACTOR")
-                        password = System.getenv("GITHUB_TOKEN")
-                    }
-                }
-            }
-            ```
+            ### 2. 解压并复制文件
+            将下载的压缩包解压，然后复制以下文件到你的 Android 项目：
             
-            ### 2. 添加依赖
+            - `libdeepfilter_ort.so` → `app/src/main/jniLibs/arm64-v8a/`
+            - `DeepFilterNet.java` → `app/src/main/java/com/webrtc/audio/`
+            
+            ### 3. 添加依赖
             在 `app/build.gradle` 中添加依赖：
             
             ```gradle
             dependencies {
-                implementation 'com.webrtc.audio:deepfilter-android:1.0.${{ github.run_number }}'
+                implementation 'com.infobip:google-webrtc:1.0.40793'
             }
             ```
+            
+            ### 4. 使用示例代码
+            参考 `DeepFilterNet.java` 中的示例代码，在你的应用中初始化和使用降噪功能。
             
             ### 3. 配置 NDK
             确保 `app/build.gradle` 中配置了 NDK：
