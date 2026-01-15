@@ -3,6 +3,10 @@ name: Publish DeepFilterNet Android Library
 on:
   release:
     types: [created]
+  push:
+    branches:
+      - my-modifications
+      - main
   workflow_dispatch:
     inputs:
       build_type:
